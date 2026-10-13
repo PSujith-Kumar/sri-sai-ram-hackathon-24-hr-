@@ -31,7 +31,7 @@ const SYMPTOM_RULES = [
   { re: /सा[ंँ]स नहीं|सा[ंँ]स लेने में (तकलीफ|दिक्कत)|saans (nahi|nahin|lene mein (takleef|dikkat))|மூச்சு ?(விட|திணறல்)|moochu ?(vida|thinaral|mudiyala)/i, code: 'BR', level: 3, selfNegating: true },
   { re: /बेहोश|behosh|மயக்கம்|மயங்கி|mayakkam|mayangi/i, code: 'FN', level: 3 },
   { re: /बहुत खून|khoon (beh|nikal)|இரத்தம் (கொட்ட|வடி)|ratham (kottu|vadi)/i, code: 'BL', level: 3 },
-  { re: /मरना चाहत|जीना नहीं|jeena nahi|marna chahta|marna chahti|சாக வேண்டும்|saaga vendum|வாழ பிடிக்கவில்லை/i, code: 'MH', level: 3, selfNegating: true },
+  { re: /मरना चाहत|मर जाना चाहिए|जीना नहीं|जीने की इच्छा नहीं|जान लेना चाहत|जिंदगी खत्म|ज़िंदगी खत्म|jeena nahi|marna chahta|marna chahti|mar jaana chahiye|zindagi khatam|jaan lena chahta|சாக வேண்டும்|சாகணும்|வாழ (பிடிக்கவில்லை|விரும்பவில்லை|வேண்டாம்)|உயிரை (மாய்த்|விட)|saaga vendum|saaganum|vaazha (pidikkala|virumbala|vendam)/i, code: 'MH', level: 3, selfNegating: true },
   { re: /गिर गया|गिर गई|gir gaya|gir gayi|கீழே விழுந்|vizhundhu|vizhundhen/i, code: 'FL', level: 2 },
   { re: /मदद|बचाओ|bachao|madad|உதவி|udavi|kaapathunga|காப்பாற்றுங்கள்/i, code: 'HP', level: 2 },
   { re: /चक्कर|chakkar|सिर दर्द|sir dard|தலை ?(சுற்று|வலி)|thalai ?(suthudhu|suthuthu|vali)/i, code: 'SY', level: 1 },
@@ -79,6 +79,18 @@ const matchesRule = (rule, text) => {
 }
 
 const MOOD_CONFIDENCE = 0.45
+const CALM_MOODS = ['neutral', 'happy', 'angry', 'tired']
+const DISTRESS_MOODS = ['distressed', 'low', 'anxious']
+const STRONG_MOOD = 0.6
+// Words that suggest pain, danger, fear or low mood (English, Hindi, Tamil; script and romanised).
+const DISTRESS_CUE = new RegExp([
+  '\\bpain(ful|s)?\\b|hurt|\\bache|aching|breath|blood|bleed|dizz|faint|pass(ed|ing)? out|collaps|\\bfall|\\bfell|stumbl|tumbl|slipp|landed|chest|heart|numb|swell|swollen|vomit|nausea|fever|temperature|shiver|sweat|itch|rash|allerg',
+  '\\bhelp\\b|emergency|dying|\\bdie\\b|\\bdead|\\bkill|suicid|end (it|my life)|burning|unconscious|stroke|seiz|chok|gasp|wheez|cramp|weak|tremor|trembl|\\bshak|panic|cannot|unable|spinning|\\bblur|droop|slurr|confus',
+  'cough|throat|swallow|\\bdark|black(ing)? out|\\bsting\\b|wound|broke|fracture|headache|migraine|stomach|vision|pressure|\\btight|crush|\\bsharp|unbearable|agony|terrible|severe|serious|\\bworse|scared|afraid|terrified',
+  'worried|anxious|nervous|lonely|alone|sad|cry|hopeless|depress|worthless|burden|giving up|no point|better off|don.t want|can.t (move|feel|see|speak|stand|get up|take)',
+  'दर्द|सीने|साँस|सांस|खून|चक्कर|बेहोश|मदद|बचाओ|गिर|बुखार|उल्टी|घबराहट|डर|अकेल|उदास|dard|saans|khoon|chakkar|behosh|madad|bachao|\\bgir\\b|bukhar|\\bulti|ghabra|dar lag|akela|udaas',
+  'வலி|மூச்சு|ரத்த|இரத்த|மயக்க|உதவி|விழுந்|காய்ச்சல்|வாந்தி|பயம்|தனிமை|சோக|\\bvali|moochu|ratham|mayakkam|udhavi|udavi|vizhund|kaichal|vaanthi|bayam|thaniya|kashtam',
+].join('|'), 'i')
 const SEVERITY_CONFIDENCE = 0.6
 const CRITICAL_CONFIDENCE = 0.85
 // Chosen from the held-out trade-off table in ml/REPORT.md: 0.5 alerts ~77% of serious sentences at ~7% false alarms.
@@ -94,6 +106,9 @@ function modelView(text) {
   let level = LEVEL.none
   if (ml.seriousProb >= ALERT_CONFIDENCE) level = ml.severityLevel === LEVEL.critical && ml.severityProb >= CRITICAL_CONFIDENCE ? LEVEL.critical : LEVEL.urgent
   else if (ml.seriousProb >= SERIOUS_MASS || (ml.severityLevel === LEVEL.watch && ml.severityProb >= SEVERITY_CONFIDENCE)) level = LEVEL.watch
+  // Consistency check: both model heads must agree. If the same model reads the sentence as calm
+  // (neutral, happy, angry or tired), a "serious" score is more likely unfamiliar wording than danger.
+  if (level >= LEVEL.urgent && CALM_MOODS.includes(ml.mood) && ml.moodProb >= MOOD_CONFIDENCE) level = LEVEL.watch
   return { ...ml, level }
 }
 
@@ -106,7 +121,10 @@ export function analyzeUtterance(text = '', { conditions = [], allergies = [] } 
   const mentionsAllergen = allergies.some(a => a && new RegExp(`\\b${a}\\b`, 'i').test(text)) && /(take|took|taken|give|gave|given|prescri|inject|eat|ate)/i.test(text)
   if (mentionsAllergen) { codes.push('AL'); level = Math.max(level, LEVEL.urgent) }
   const ml = modelView(text)
-  if (ml && ml.level > level) { level = ml.level; codes.push('ML') }
+  // The model may only escalate on its own when there is something distress-like to go on: a cue word, or a
+  // clearly distressed mood reading. Ordinary chit-chat in unfamiliar wording can then never raise an alert.
+  const evidence = DISTRESS_CUE.test(text) || (ml && DISTRESS_MOODS.includes(ml.mood) && ml.moodProb >= STRONG_MOOD)
+  if (ml && evidence && ml.level > level) { level = ml.level; codes.push('ML') }
   const mood = ml && ml.moodProb >= MOOD_CONFIDENCE ? ml.mood : detectMood(text)
   return { mood, moodConfidence: ml ? ml.moodProb : null, intent: detectIntent(text), lang: detectLanguage(text), level, codes: unique(codes) }
 }

@@ -123,7 +123,8 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .cmp-strip { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .cmp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; }
 .cmp-grid > .cmp-relay { grid-column: 1 / -1; }
-@media (max-width: 960px) { .cmp-grid { grid-template-columns: 1fr; } }
+.cmp-grid > * { min-width: 0; }
+@media (max-width: 960px) { .cmp-grid { grid-template-columns: minmax(0, 1fr); } }
 .cmp-chat .cmp-log { display: grid; align-content: start; gap: 10px; height: 340px; overflow-y: auto; padding: 4px 2px 12px; }
 .cmp-msg { max-width: 88%; border-radius: 16px; padding: 10px 14px; background: #eef5f2; }
 .cmp-msg span { display: block; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #138f84; }
@@ -181,3 +182,6 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .cmp-brief { margin: 4px 0 0; font-size: 13px; color: #36524e; }
 .cmp-listening { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 12px; border-radius: 12px; background: #fae6e0; color: #7d2f20; font-size: 14px; }
 .cmp-listening svg { width: 16px; height: 16px; flex: none; animation: cmp-pulse 1.2s ease-in-out infinite; }
+
+.cmp-relay-list code, .cmp-brief, .cmp-note code { overflow-wrap: anywhere; }
+.cmp-input input { min-width: 0; }

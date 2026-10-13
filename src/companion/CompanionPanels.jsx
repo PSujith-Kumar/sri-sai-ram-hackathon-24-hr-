@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Activity, Camera, CameraOff, Flame, Heart, Mic, MicOff, PhoneCall, Radio, Send, ShieldAlert, Smartphone, Video, Volume2, Wifi, WifiOff } from 'lucide-react'
 import { Badge, Card } from '../ui'
 import { LEVEL_NAMES } from './brain'
@@ -24,10 +24,13 @@ export function StatusStrip({ aiOn, online, thermalStatus, cctvOn, recording, li
 
 export function ConversationPanel({ messages, onSend, onMic, listening, interim, canListen, companionName }) {
   const [text, setText] = useState('')
+  const logRef = useRef(null)
+  // Keep the newest message (and the live transcript) in view, as in any chat.
+  useEffect(() => { const el = logRef.current; if (el) el.scrollTop = el.scrollHeight }, [messages.length, listening])
   const submit = (e) => { e.preventDefault(); if (!text.trim()) return; onSend(text.trim()); setText('') }
   return <Card className="cmp-chat">
     <div className="card-head"><div><p className="eyebrow">YOUR COMPANION</p><h2>Talk with {companionName}</h2></div></div>
-    <div className="cmp-log" aria-live="polite">
+    <div className="cmp-log" aria-live="polite" ref={logRef}>
       {messages.length === 0 && <p className="cmp-hint">Press “Start AI care mode” and {companionName} will say hello. You can also tap the microphone or type below.</p>}
       {messages.map(m => <div key={m.id} className={`cmp-msg cmp-${m.role}`}><span>{m.role === 'ai' ? companionName : m.role === 'patient' ? 'You' : 'System'}</span><p>{m.text}</p></div>)}
     </div>
