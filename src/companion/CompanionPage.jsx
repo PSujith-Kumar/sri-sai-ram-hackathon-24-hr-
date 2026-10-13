@@ -12,10 +12,13 @@ import { assessVoice, updateBaseline } from './voiceAnalysis'
 import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
+import { usePhoneLink } from './usePhoneLink'
+import { PhonePanel } from './PhonePanels'
+import { describeObservation, describeScene, trackObservation, visionLevel } from './vision'
 import { loadMoodModel } from './mood'
 import { localDate } from '../careFlow'
 import { isActive } from '../medminder'
-import { LLM_DEFAULTS, askGemma, buildSystemPrompt, checkGemma, warmGemma } from './llm'
+import { LLM_DEFAULTS, askGemma, buildSensingHint, buildSystemPrompt, checkGemma, warmGemma } from './llm'
 import { CLASSIFIER_DEFAULTS, checkClassifier, classifyRemote } from './remoteModel'
 import { EMPTY_COMPANION, mergeProfile } from './config'
 import { appendConversationMemory, avoidRepeatedResponse, conversationSignals, pruneConversationMemory } from './memory'
@@ -26,7 +29,11 @@ const ALERT_COOLDOWN_MS = 60000
 const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 const uid = (p) => `${p}${Date.now()}${Math.floor(Math.random() * 1000)}`
 const toThermalTokens = (reasons) => reasons.map(r => (r === 'inactive' ? 'no-motion' : r))
-const THERMAL_WORDS = { 'possible-fall': 'a possible fall', fever: 'a high body temperature', 'heat-hazard': 'a heat hazard', 'no-motion': 'no movement for a long time' }
+const THERMAL_WORDS = { 'possible-fall': 'a possible fall', fever: 'a high body temperature', 'heat-hazard': 'a heat hazard', 'no-motion': 'no movement for a long time', 'voice-change': 'a change in the voice', 'mood-distress': 'some worrying words', 'visual-distress': 'visible signs of distress' }
+const SOFT_REASONS = ['voice-change', 'mood-distress'] // worth a look with the camera, but not proof of anything
+const DISTRESS_MOODS = ['distressed', 'low', 'anxious']
+const TEST_CAMERA_MS = 20000
+const MOOD_VOICE_MS = 5 * 60000
 const ageFromDob = (dob) => (dob ? Math.floor((Date.now() - new Date(dob)) / 31557600000) : null)
 
 export default function CompanionPage({ data, setData, user, patients, notify }) {
@@ -58,6 +65,8 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const [hasSample, setHasSample] = useState(() => Boolean(loadVoiceSample(patient.id)))
   const [clips, setClips] = useState([])
   const [level, setLevel] = useState(LEVEL.none)
+  const [visionNote, setVisionNote] = useState(null)
+  const [testingCamera, setTestingCamera] = useState(false)
   const online = browserOnline && !simulateOffline
 
   // Volatile values read from timers/callbacks live in refs so closures never go stale.
@@ -74,28 +83,41 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const remindedRef = useRef(new Set())
   const thermalActiveRef = useRef([])
   const cctvEventsRef = useRef([])
+  const softEventsRef = useRef([])      // a change of tone or worrying words: lets the camera look, never proves anything
+  const visionBusyRef = useRef(false)
+  const visionHistoryRef = useRef([])
+  const lastVisionRef = useRef(null)    // { observation, at } of the latest Gemma 3 camera check
+  const testTimerRef = useRef(null)
+  const lastMoodRef = useRef({ mood: null, at: 0 }) // the patient's latest mood, so the voice can match it for a few minutes
 
   const update = useCallback((fn) => setData(d => ({ ...d, companion: { ...d.companion, [patient.id]: fn({ ...EMPTY, ...d.companion?.[patient.id] }) } })), [setData, patient.id])
   const setProfile = useCallback((patch) => update(c => ({ ...c, profile: { ...mergeProfile(c.profile), ...patch } })), [update])
   const setThermalSource = useCallback((patch) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, thermal: { ...p.thermal, ...patch } } } }), [update])
+  const setVision = useCallback((patch) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, vision: { ...p.vision, ...patch } } } }), [update])
   const addContact = useCallback((contact) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: [...p.contacts, { ...contact, id: uid('k') }] } } }), [update])
   const removeContact = useCallback((id) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: p.contacts.filter(k => k.id !== id) } } }), [update])
 
   const voice = useVoice({ profile, patientId: patient.id, onProblem: (code, lang) => live.current.onMicProblem?.(code, lang) })
+  // The thermal phone may keep watching while AI care mode is on (it only sees heat shapes). Otherwise sensors start
+  // after an unanswered check-in or a change in the patient's voice or words.
+  const thermalAlwaysOn = profile.thermal.kind === 'phone' && profile.thermal.alwaysOn
+  const sensorsOn = profile.autonomous && profile.sensorEscalationConsent && (safetySensorsActive || thermalAlwaysOn)
+  const wakeReason = guard.mode !== GUARD_MODE.thermal ? guard.reasons.map(r => THERMAL_WORDS[r] || r).join(' and ') : testingCamera ? 'a test from CareBridge' : ''
   const cctv = useCamera({
-    source: { kind: profile.thermal.cctvKind, url: profile.thermal.cctvUrl }, enabled: cctvOn, forceUnavailable: false,
+    source: { kind: profile.thermal.cctvKind, url: profile.thermal.cctvUrl }, enabled: cctvOn, forceUnavailable: false, patientId: patient.id, reason: wakeReason,
     onEvent: (e) => { cctvEventsRef.current.push(e); live.current.onCameraEvent?.(e) },
   })
   const thermal = useThermal({
-    source: profile.thermal, enabled: profile.autonomous && profile.sensorEscalationConsent && safetySensorsActive, scenario, forceUnavailable: sensorLoss,
+    source: profile.thermal, patientId: patient.id, enabled: sensorsOn, scenario, forceUnavailable: sensorLoss,
     onUpdate: ({ active }) => { thermalActiveRef.current = active },
   })
+  const phoneLink = usePhoneLink(patient.id)
 
   // "Eyes" = can the AI currently see the patient (thermal, or CCTV while it is on)? If not, it uses voice.
   const eyes = thermal.status === 'live' || (cctvOn && cctv.status === 'live') ? 'live' : profile.autonomous ? 'unavailable' : 'off'
   const ctx = profile.useRecordContext ? { conditions: patient.conditions, allergies: patient.allergies } : { conditions: [], allergies: [] }
   const companionName = profile.companionName
-  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name, messages, careContacts }
+  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name, messages, careContacts, cctv, sensorsOn }
 
   const addMessage = useCallback((role, text, extra = {}) => {
     const message = { id: uid('m'), role, text, createdAt: new Date().toISOString(), ...extra }
@@ -117,7 +139,8 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       'We can pause and try a new approach. I am listening.',
     ]) : text
     addMessage('ai', finalText)
-    await voice.speak(finalText, lang)
+    const heard = lastMoodRef.current
+    await voice.speak(finalText, lang, Date.now() - heard.at < MOOD_VOICE_MS ? heard.mood : null)
   }, [addMessage, voice])
   live.current.onMicProblem = (code, lang) => { const help = explainSpeechError(code, lang); if (help) addMessage('system', help) }
   const refreshClips = useCallback(() => listClips().then(setClips), [])
@@ -200,7 +223,14 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     if (!cfg.enabled || knownFacts || analysis.level >= LEVEL.urgent || analysis.codes.includes('MH') || voiceResult?.status === 'concerning') return null
     setThinking(true)
     const system = buildSystemPrompt({ companion: L.profile.companionName, name: L.name, age: ageFromDob(L.patient.dob), conditions: L.patient.conditions, allergies: L.patient.allergies, medicines: L.meds.map(m => m.name) })
-    const hint = analysis.level > 0 ? `local checks rate this "${['none', 'watch', 'urgent', 'critical'][analysis.level]}"` : ''
+    const seen = lastVisionRef.current
+    const hint = buildSensingHint({
+      rating: analysis.level > 0 ? ['none', 'watch', 'urgent', 'critical'][analysis.level] : '',
+      mood: analysis.mood,
+      voiceReasons: voiceResult?.status === 'unusual' ? voiceResult.reasons : [],
+      camera: seen && Date.now() - seen.at < 120000 ? seen.observation.summary : '',
+      thermal: thermalActiveRef.current,
+    })
     const result = await askGemma(cfg, { system, history: L.messages, text, hint })
     setThinking(false)
     if (!result && !llmWarnedRef.current) { llmWarnedRef.current = true; addMessage('system', 'Gemma did not answer, so I used my built-in replies. Open "Gemma 3 language model" below and press Test connection.') }
@@ -221,6 +251,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     const gemma = await consultGemma(text, localAnalysis, voiceResult)
     const analysis = mergeLlmAnalysis(localAnalysis, gemma, text)
     if (voiceResult?.status === 'normal') setProfile({ voiceBaseline: updateBaseline(L.profile.voiceBaseline, heard.features, voiceResult.rate) })
+    lastMoodRef.current = { mood: analysis.mood, at: Date.now() }
     update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, voice: voiceResult?.status || null, at: new Date().toISOString() }].slice(-60) }))
     if (analysis.intent === 'medicine-taken') {
       const target = L.meds.find(m => m.status !== 'taken')
@@ -229,6 +260,13 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     const assessment = assess({ utterance: text, prediction, llm: gemma ? analysis : null, voice: voiceResult, missedCheckins: 0 })
     // A worrying voice alerts the family AND the doctor (and Asha tells the patient she is doing so).
     raise(assessment, { toDoctor: assessment.codes.includes('VC') && assessment.level >= LEVEL.urgent })
+    // A change in tone, or worrying words: switch the normal camera on for a live look (only with the patient's sensor consent).
+    if (L.profile.autonomous && L.profile.sensorEscalationConsent) {
+      const concerns = []
+      if (voiceResult && ['unusual', 'concerning'].includes(voiceResult.status)) concerns.push('voice-change')
+      if (assessment.level >= LEVEL.watch && (assessment.level >= LEVEL.urgent || DISTRESS_MOODS.includes(analysis.mood))) concerns.push('mood-distress')
+      if (concerns.length) { softEventsRef.current.push(...concerns); setSafetySensorsActive(true) }
+    }
     const token = data.tokens.find(t => t.patientId === L.patient.id && t.status === 'waiting')
     const queue = data.queues.find(q => q.id === token?.queueId)
     const ahead = token && queue ? Math.max(0, token.number - queue.serving - 1) : null
@@ -291,10 +329,13 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       busyRef.current = false
     }
   }, [say, hearReply, handleHeard, addMessage, raise, assess, voice])
+  live.current.say = say
+  live.current.runCheckIn = runCheckIn
 
   const onCameraEvent = useCallback((event) => {
     if (event === 'possible-fall') { fallRef.current = true; addMessage('system', 'CCTV check: possible fall confirmed.') }
     else if (event === 'inactive') { inactiveRef.current = true; addMessage('system', 'CCTV check: unusually still.') }
+    else if (event === 'visual-distress') addMessage('system', 'Camera check: visible signs of distress.')
     raise(assess())
     runCheckIn()
   }, [addMessage, raise, assess, runCheckIn])
@@ -304,8 +345,8 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     const words = reasons.map(r => THERMAL_WORDS[r] || r).join(' and ')
     if (effect === 'cctv-on') {
       setCctvOn(true)
-      addMessage('system', `Thermal sensor noticed ${words}. CCTV is on for a live check. Nothing is recorded or shared.`)
-      runCheckIn()
+      addMessage('system', `Something unusual was noticed: ${words}. The camera is on for a live check. Nothing is recorded or shared.`)
+      if (!reasons.every(r => SOFT_REASONS.includes(r))) runCheckIn() // the patient has just spoken if it was a tone or word concern
     } else if (effect === 'start-recording') {
       const ok = cctv.startRecording()
       setRecordingActive(ok)
@@ -322,30 +363,75 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       addMessage('system', 'All clear. CCTV switched off.')
     }
   }, [addMessage, runCheckIn, cctv, raise, assess, profile.thermal.cctvKind, refreshClips])
+  live.current.applyEffect = applyEffect // read by the guard timer below: a timer must not restart on every render
 
   // Privacy guard tick: decides when CCTV may turn on and when anything may be recorded.
   useEffect(() => {
-    if (!profile.autonomous || !profile.sensorEscalationConsent || !safetySensorsActive) return undefined
+    if (!sensorsOn) return undefined
     const timer = setInterval(async () => {
       const current = guardRef.current
       const cctvEvents = cctvEventsRef.current.splice(0)
-      const input = { now: Date.now(), thermalActive: thermalActiveRef.current, cctvEvents: toThermalTokens(cctvEvents), responded: respondedAtRef.current >= current.since && current.since > 0 }
+      const input = { now: Date.now(), thermalActive: thermalActiveRef.current, cctvEvents: toThermalTokens(cctvEvents), softEvents: softEventsRef.current.splice(0), responded: respondedAtRef.current >= current.since && current.since > 0 }
       const { guard: next, effects } = stepGuard(current, input)
       if (next !== current) { guardRef.current = next; setGuard(next) }
-      for (const effect of effects) await applyEffect(effect, next.reasons.length ? next.reasons : current.reasons)
+      for (const effect of effects) await live.current.applyEffect(effect, next.reasons.length ? next.reasons : current.reasons)
     }, 1000)
     return () => clearInterval(timer)
-  }, [profile.autonomous, profile.sensorEscalationConsent, safetySensorsActive, applyEffect])
+  }, [sensorsOn])
 
   // Turning AI care mode off must leave nothing running.
   useEffect(() => {
-    if (profile.autonomous && profile.sensorEscalationConsent && safetySensorsActive) return
+    if (sensorsOn) return
     guardRef.current = initialGuard()
     setGuard(guardRef.current)
     setCctvOn(false)
     setSafetySensorsActive(false)
     thermalActiveRef.current = []
-  }, [profile.autonomous, profile.sensorEscalationConsent, safetySensorsActive])
+    softEventsRef.current = []
+  }, [sensorsOn])
+
+  // Gemma 3 looks at the camera picture while the camera is on. A finding needs two looks in a row to agree, and goes to the
+  // privacy guard as a camera event; the guard still decides about recording and alerts.
+  const visionOn = cctvOn && cctv.status === 'live' && profile.llm.enabled && profile.vision.enabled
+  useEffect(() => {
+    if (!visionOn) { visionHistoryRef.current = []; return undefined }
+    const look = async () => {
+      if (visionBusyRef.current) return
+      const frame = await live.current.cctv.grabFrame()
+      if (!frame) return
+      visionBusyRef.current = true
+      try {
+        const L = live.current
+        const context = guardRef.current.reasons.map(r => THERMAL_WORDS[r] || r).join(', ')
+        const result = await describeScene(L.profile.llm, frame, context)
+        if (!result.ok) { setVisionNote({ text: `Camera check unavailable (${result.error}).`, at: Date.now() }); return }
+        const { observation } = result
+        lastVisionRef.current = { observation, at: Date.now() }
+        const { history, event } = trackObservation(visionHistoryRef.current, observation)
+        visionHistoryRef.current = history
+        setVisionNote({ text: describeObservation(observation), at: Date.now() })
+        if (visionLevel(observation).level !== 'none') addMessage('system', describeObservation(observation))
+        if (event && live.current.sensorsOn) { cctvEventsRef.current.push(event); live.current.onCameraEvent?.(event) }
+      } finally { visionBusyRef.current = false }
+    }
+    look()
+    const timer = setInterval(look, Math.max(5, profile.vision.intervalSec) * 1000)
+    return () => clearInterval(timer)
+  }, [visionOn, profile.vision.intervalSec, addMessage])
+
+  // Setup check: switch the camera phone on for a short, visible test.
+  const testCameraPhone = () => {
+    if (testingCamera) return
+    setTestingCamera(true)
+    setCctvOn(true)
+    addMessage('system', 'Testing the camera phone. Its camera is on only for the next 20 seconds.')
+    clearTimeout(testTimerRef.current)
+    testTimerRef.current = setTimeout(() => {
+      setTestingCamera(false)
+      if (guardRef.current.mode === GUARD_MODE.thermal) setCctvOn(false)
+    }, TEST_CAMERA_MS)
+  }
+  useEffect(() => () => clearTimeout(testTimerRef.current), [])
 
   // Autonomous loop: medicine reminders, and voice check-ins whenever nothing can see the patient.
   useEffect(() => {
@@ -354,12 +440,12 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       const L = live.current
       dueMedications(L.meds, nowMinutes()).filter(m => !remindedRef.current.has(m.id)).forEach(m => {
         remindedRef.current.add(m.id)
-        say(localize(replyLangRef.current, 'medReminder', { med: `${m.name}, ${m.instruction.toLowerCase()}, ${m.note.toLowerCase()}` }))
+        live.current.say(localize(replyLangRef.current, 'medReminder', { med: `${m.name}, ${m.instruction.toLowerCase()}, ${m.note.toLowerCase()}` }))
       })
-      if (L.eyes !== 'live' && !busyRef.current && Date.now() - lastContactRef.current >= L.profile.checkInSeconds * 1000) runCheckIn()
+      if (L.eyes !== 'live' && !busyRef.current && Date.now() - lastContactRef.current >= L.profile.checkInSeconds * 1000) L.runCheckIn()
     }, 5000)
     return () => clearInterval(timer)
-  }, [profile.autonomous, say, runCheckIn])
+  }, [profile.autonomous])
 
   useEffect(() => {
     const on = () => setBrowserOnline(true)
@@ -418,6 +504,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     <div className="cmp-grid">
       <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} onFeedback={handleFeedback} thinking={thinking} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
       <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }}/>
+      <PhonePanel link={phoneLink} profile={profile} setThermalSource={setThermalSource} setVision={setVision} llmOn={profile.llm.enabled} visionNote={visionNote} onTestCamera={testCameraPhone} testing={testingCamera}/>
       <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline} signals={signals}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
       <ModelPanel llm={profile.llm} setLlm={setLlm} status={llmStatus} onTest={testLlm} classifier={classifierOk}/>

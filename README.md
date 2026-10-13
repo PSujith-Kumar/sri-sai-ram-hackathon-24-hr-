@@ -42,6 +42,10 @@ On Windows, double-click `start.bat`. It checks for Node.js and npm, installs de
 
 Create a production build with `npm run build`.
 
+## Phones (thermal + camera)
+
+Two phones can watch over USB tethering: a thermal phone that is always on (heat shapes only) and a camera phone that switches on only when the AI hears a change in the patient's voice or sees something unusual, then Gemma 3 looks at the picture. See [PHONE_SETUP.md](PHONE_SETUP.md). Try it without phones: `npm run phones:simulate`.
+
 ## Data and safety
 
 This repository is a hackathon demonstration using fictional hospitals and patients. Login and application changes are stored in browser local storage. Role and relationship checks demonstrate intended authorization behavior, but production deployment requires a secure backend, hashed credentials, server-side authorization, audit logs and encrypted medical storage.

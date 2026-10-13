@@ -361,3 +361,16 @@ describe('greeting intent', () => {
     expect(detectMood('Hello, I feel a bit tired today')).toBe('tired')
   })
 })
+
+describe('showing saved companion events', () => {
+  it('handles events from the demo data that have no level or reasons', async () => {
+    const { eventView, buildSnapshot } = await import('../src/companion/brain')
+    expect(eventView({ id: 'evt-demo-1', kind: 'check-in', text: 'Morning wellbeing check completed', at: '2026-10-14T07:46:00.000Z' })).toEqual({ level: 0, text: 'Morning wellbeing check completed' })
+    expect(eventView({ level: 2, reasons: ['a possible fall', 'no reply'] })).toEqual({ level: 2, text: 'a possible fall, no reply' })
+    expect(eventView({ kind: 'check-in' }).text).toBe('check-in')
+    expect(eventView(null)).toEqual({ level: 0, text: 'Event' })
+    expect(eventView({ level: 9, reasons: [] }).level).toBe(0)
+    const snap = buildSnapshot({ patient: { conditions: [], allergies: [], bloodGroup: 'A+' }, events: [{ id: 'x', kind: 'check-in', at: new Date().toISOString() }] })
+    expect(snap.alerts24h).toBe(0)
+  })
+})

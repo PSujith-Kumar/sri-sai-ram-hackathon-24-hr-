@@ -9,3 +9,6 @@ ml/artifacts/
 .env
 .env.local
 .env.*.local
+
+# phone gateway certificate (generated locally)
+.cache/

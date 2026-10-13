@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Activity, Camera, CameraOff, Flame, Heart, MessageCircleWarning, Mic, MicOff, PhoneCall, Radio, RotateCcw, Send, ShieldAlert, Smartphone, Sparkles, ThumbsUp, Video, Volume2, Wifi, WifiOff } from 'lucide-react'
 import { Badge, Card } from '../ui'
-import { LEVEL_NAMES } from './brain'
+import { LEVEL_NAMES, eventView } from './brain'
 import { buildBriefing, USSD_CONFIG, smsHref, ussdDialHref } from './ussd'
 import { SAMPLE_PROMPT } from './useVoice'
 import { isLocalEndpoint } from './llm'
@@ -95,7 +95,7 @@ export function UnderstandingPanel({ snapshot, events, camera, voiceCheck, basel
     <div className="card-head"><div><p className="eyebrow">WHAT THE AI KNOWS</p><h2>Patient understanding</h2></div><Badge tone="mint"><Activity/> Auto-updated</Badge></div>
     <dl>{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
     <p className="eyebrow cmp-sub">Recent AI decisions</p>
-    {events.length === 0 ? <p className="cmp-hint">Nothing unusual so far.</p> : <ul className="cmp-events">{events.slice(0, 5).map(e => <li key={e.id}><Badge tone={LEVEL_TONE[e.level]}>{LEVEL_NAMES[e.level]}</Badge><span>{e.reasons.join(', ')}</span><small>{new Date(e.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</small></li>)}</ul>}
+    {events.length === 0 ? <p className="cmp-hint">Nothing unusual so far.</p> : <ul className="cmp-events">{events.slice(0, 5).map(e => { const v = eventView(e); return <li key={e.id}><Badge tone={LEVEL_TONE[v.level]}>{LEVEL_NAMES[v.level]}</Badge><span>{v.text}</span><small>{new Date(e.at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}</small></li> })}</ul>}
     <p className="cmp-note">Camera: {camera}. These are non-diagnostic wellbeing signals. Records are used only when the patient enables that setting.</p>
   </Card>
 }

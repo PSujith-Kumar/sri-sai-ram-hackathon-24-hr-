@@ -195,3 +195,23 @@ describe('voice wellness in the decision', () => {
     expect(companionReply({ analysis, name: 'Ananya Kumar', voice: unusual })).toMatch(/sounds a little weak/)
   })
 })
+
+describe('voice that follows the patient mood', () => {
+  it('slows and softens for low, anxious and tired moods, and lifts slightly for happy', async () => {
+    const { speechStyle, MOOD_SPEECH } = await import('../src/companion/useVoice')
+    const profile = { rate: 1, pitch: 1, adaptiveTone: true }
+    expect(speechStyle(profile, 'low').rate).toBeLessThan(1)
+    expect(speechStyle(profile, 'tired').rate).toBeLessThan(speechStyle(profile, 'low').rate)
+    expect(speechStyle(profile, 'anxious').pitch).toBeLessThan(1)
+    expect(speechStyle(profile, 'happy').pitch).toBeGreaterThan(1)
+    expect(speechStyle(profile, 'neutral')).toEqual({ rate: 1, pitch: 1 })
+    expect(speechStyle(profile, null)).toEqual({ rate: 1, pitch: 1 })
+    expect(Object.values(MOOD_SPEECH).every(m => m.rate >= 0.8 && m.rate <= 1 && m.pitch >= 0.9 && m.pitch <= 1.1)).toBe(true)
+  })
+  it('builds on the speed and pitch the patient chose, within safe limits, and can be switched off', async () => {
+    const { speechStyle } = await import('../src/companion/useVoice')
+    expect(speechStyle({ rate: 1.4, pitch: 1.6, adaptiveTone: true }, 'happy').pitch).toBeLessThanOrEqual(2)
+    expect(speechStyle({ rate: 0.6, pitch: 0.6, adaptiveTone: true }, 'tired').rate).toBeGreaterThanOrEqual(0.5)
+    expect(speechStyle({ rate: 1.2, pitch: 1, adaptiveTone: false }, 'tired')).toEqual({ rate: 1.2, pitch: 1 })
+  })
+})

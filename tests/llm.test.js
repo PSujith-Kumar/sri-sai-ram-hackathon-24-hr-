@@ -175,3 +175,32 @@ describe('assessSituation with a Gemma-merged analysis', () => {
     expect(assessSituation({ utterance: 'hello', llm: null }).level).toBe(LEVEL.none)
   })
 })
+
+describe('mood-aware hints for Gemma', () => {
+  it('gives guidance for each mood and none for neutral', async () => {
+    const { MOOD_GUIDANCE, buildSensingHint } = await import('../src/companion/llm')
+    expect(Object.keys(MOOD_GUIDANCE).sort()).toEqual(['angry', 'anxious', 'distressed', 'happy', 'low', 'neutral', 'tired'])
+    expect(buildSensingHint({ mood: 'neutral' })).toBe('')
+    expect(buildSensingHint({ mood: 'low' })).toMatch(/unhurried/)
+    expect(buildSensingHint({ mood: 'anxious' })).toMatch(/reassuring/)
+  })
+  it('adds what the other checks noticed', async () => {
+    const { buildSensingHint } = await import('../src/companion/llm')
+    const hint = buildSensingHint({ rating: 'watch', mood: 'tired', voiceReasons: ['a quieter voice than usual'], camera: 'a person sits in a chair', thermal: ['no-motion'] })
+    expect(hint).toContain('local checks rate this "watch"')
+    expect(hint).toContain('a quieter voice than usual')
+    expect(hint).toContain('the room camera shows: a person sits in a chair')
+    expect(hint).toContain('the thermal sensor reports: no-motion')
+  })
+  it('the system prompt tells Gemma to follow the note without revealing it', async () => {
+    const { buildSystemPrompt } = await import('../src/companion/llm')
+    expect(buildSystemPrompt({})).toMatch(/never mention the note, the sensors or the camera/)
+  })
+})
+
+describe('what Gemma may promise', () => {
+  it('is told it can only talk, remind and alert, not do physical things', async () => {
+    const { buildSystemPrompt } = await import('../src/companion/llm')
+    expect(buildSystemPrompt({})).toMatch(/Never offer to fetch things or do anything physical/)
+  })
+})

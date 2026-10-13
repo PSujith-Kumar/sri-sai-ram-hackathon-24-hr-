@@ -42,10 +42,38 @@ export function buildSystemPrompt({ companion = 'Asha', name = 'the patient', ag
     'Talk like a caring friend: 1 to 3 short sentences, simple words, kind and calm. Ask at most one gentle question.',
     'Reply in the SAME language the patient used: English, Hindi (Devanagari) or Tamil (Tamil script). If they wrote in romanised Hindi or Tamil, reply in that language\'s script.',
     'Never diagnose, never suggest medicine doses or changes, and never contradict the care team. You are not a doctor.',
+    'You can only talk, remind about medicines and alert the family and care team. Never offer to fetch things or do anything physical (no blankets, water, food or visits), and never promise what you cannot do.',
     'If the patient mentions pain, trouble breathing, a fall, bleeding, fainting, confusion, a stroke sign or thoughts of self-harm, stay calm, say you are alerting their family and doctor, and ask one short question about how they feel.',
+    'Match the patient\'s mood: the note after each message says how they sound and how to speak to them. Follow it, and never mention the note, the sensors or the camera unless the patient asks.',
     'Also judge the patient\'s state. Answer ONLY with JSON: {"mood": one of happy|neutral|low|anxious|tired|angry|distressed, "severity": one of none|watch|urgent|critical, "reply": your reply}.',
     'severity: none = ordinary talk; watch = mild discomfort or low mood worth a gentle check; urgent = real pain, a fall or panic; critical = chest pain, cannot breathe, fainting, stroke signs, heavy bleeding or self-harm.',
   ].join('\n')
+}
+
+// How to talk to someone in each mood. Added to the note Gemma gets with every message, so the reply fits how the
+// patient sounds right now (the mood comes from the fine-tuned model, the voice analysis and Gemma's own reading).
+export const MOOD_GUIDANCE = {
+  low: 'They sound low. Be warm and unhurried, acknowledge the feeling first, invite them to share, no jokes.',
+  anxious: 'They sound anxious. Be steady and reassuring, use short calm sentences, offer to contact family if they want.',
+  tired: 'They sound tired. Keep it very short and gentle, suggest rest, ask at most one tiny question.',
+  angry: 'They sound frustrated. Stay calm, acknowledge it, never argue or correct them, offer one concrete way to help.',
+  distressed: 'They sound distressed. Be calm and steady, say you are here with them, ask one short question about how they feel.',
+  happy: 'They sound cheerful. Match the warmth lightly and keep the chat easy.',
+  neutral: '',
+}
+
+/**
+ * The private note for Gemma: what the other checks noticed, and how to speak for this mood. Nothing in it is shown to
+ * the patient. `voiceReasons` come from the voice analysis, `camera` is the latest one-line camera summary.
+ */
+export function buildSensingHint({ rating = '', mood = 'neutral', voiceReasons = [], camera = '', thermal = [] } = {}) {
+  return [
+    rating ? `local checks rate this "${rating}"` : '',
+    MOOD_GUIDANCE[mood] || '',
+    voiceReasons.length ? `their voice sounded different (${voiceReasons.join(', ')}), so be gentle and check how they are` : '',
+    camera ? `the room camera shows: ${camera}` : '',
+    thermal.length ? `the thermal sensor reports: ${thermal.join(', ')}` : '',
+  ].filter(Boolean).join('; ')
 }
 
 /** Conversation so far (last few turns) plus the new sentence, in Ollama's chat format. */

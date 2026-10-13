@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#04211f">
+  <title>CareBridge phone</title>
+  <style>
+    :root { color-scheme: dark; --bg: #04211f; --card: #0a3532; --line: #1c5a55; --text: #eaf6f3; --muted: #9cc4bd; --good: #4ddbb0; --warn: #f2c14e; --bad: #ff7a70; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); }
+    body.private { background: #000; }
+    main { max-width: 520px; margin: 0 auto; display: grid; gap: 14px; }
+    h1 { margin: 0; font-size: 26px; }
+    p { margin: 0; }
+    .muted { color: var(--muted); font-size: 14px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 10px; }
+    #badge { display: inline-block; justify-self: start; padding: 6px 12px; border-radius: 999px; font-weight: 700; background: #123f3b; }
+    #badge.good { background: #0f4a3d; color: var(--good); } #badge.warn { background: #4a3d12; color: var(--warn); } #badge.bad { background: #4a1a16; color: var(--bad); }
+    label { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+    select, input { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid var(--line); background: #06302d; color: var(--text); min-height: 44px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    button { font: inherit; font-weight: 700; min-height: 48px; border-radius: 12px; border: 0; padding: 0 16px; background: var(--good); color: #032622; }
+    button.secondary { background: #123f3b; color: var(--text); border: 1px solid var(--line); }
+    button.danger { background: #4a1a16; color: #ffd9d5; }
+    canvas, video { width: 100%; border-radius: 12px; background: #000; image-rendering: pixelated; }
+    video { image-rendering: auto; }
+    .banner { border-radius: 14px; padding: 12px 14px; font-weight: 700; }
+    .banner.on { background: #4a1a16; color: #ffd9d5; border: 1px solid var(--bad); }
+    .banner.off { background: #0a1f1d; color: var(--muted); border: 1px solid var(--line); }
+    .offscreen { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1 id="title">CareBridge phone</h1>
+    <p class="muted" id="roleLine">Open this page from the QR code in the CareBridge app.</p>
+  </header>
+
+  <section class="card" aria-live="polite">
+    <span id="badge">Not started</span>
+    <p id="detail" class="muted"></p>
+  </section>
+
+  <section id="cameraBanner" class="banner off" hidden></section>
+
+  <section id="setup" class="card" hidden>
+    <label id="modeBox" hidden>What this phone sends
+      <select id="mode">
+        <option value="silhouette">Silhouette: any phone camera, no faces, no temperatures</option>
+        <option value="camera">Thermal camera picture (this browser can open it)</option>
+        <option value="test">Test pattern: no camera, checks the connection</option>
+      </select>
+    </label>
+    <div id="cameraSettings" class="row" hidden>
+      <label>Palette of the thermal picture
+        <select id="palette"><option value="whitehot">White-hot</option><option value="blackhot">Black-hot</option><option value="ironbow">Ironbow colours</option></select>
+      </label>
+      <div class="row">
+        <label>Coldest °C<input id="minC" type="number" value="20" step="1" inputmode="decimal"></label>
+        <label>Hottest °C<input id="maxC" type="number" value="40" step="1" inputmode="decimal"></label>
+      </div>
+    </div>
+    <label id="scenarioBox" hidden>Test pattern
+      <select id="scenario"><option value="normal">Someone standing</option><option value="fall">Someone who falls</option><option value="none">Empty room</option></select>
+    </label>
+    <label id="cameraBox">Camera
+      <select id="camera"><option value="">Default (rear camera)</option></select>
+    </label>
+    <button id="start" type="button">Start</button>
+    <p class="muted" id="roleHelp"></p>
+  </section>
+
+  <section id="live" class="card" hidden>
+    <canvas id="preview" width="64" height="48" aria-label="What this phone is sending" hidden></canvas>
+    <video id="video" class="offscreen" playsinline muted></video>
+    <div class="row">
+      <button id="pause" type="button" class="secondary">Pause sharing</button>
+      <button id="stop" type="button" class="danger">Disconnect</button>
+    </div>
+    <p class="muted">You are in control: pausing or disconnecting turns the camera off straight away. Keep the screen on and the phone plugged in.</p>
+  </section>
+</main>
+<script type="module" src="node.js"></script>
+</body>
+</html>

@@ -8,7 +8,7 @@ const SENSOR_LABEL = { off: 'Sensor off', connecting: 'Connecting…', live: 'Wa
 const SCENARIO_LABEL = { normal: 'Normal', fever: 'High temperature', fall: 'Fall', still: 'Very still', absent: 'Nobody in room', heat: 'Heat hazard' }
 const MODE_COPY = {
   [GUARD_MODE.thermal]: { tone: 'green', icon: <EyeOff/>, title: 'Privacy mode', text: 'CCTV is off. Only the thermal sensor is watching. It sees heat shapes, never faces, and nothing is recorded.' },
-  [GUARD_MODE.verifying]: { tone: 'gold', icon: <Eye/>, title: 'Live safety check', text: 'The thermal sensor noticed something unusual, so CCTV is on for a live look. Nothing is being recorded or shared.' },
+  [GUARD_MODE.verifying]: { tone: 'gold', icon: <Eye/>, title: 'Live safety check', text: 'Something unusual (the thermal sensor, or a change in your voice or words) switched the camera on for a live look. Nothing is being recorded or shared.' },
   [GUARD_MODE.recording]: { tone: 'coral', icon: <Video/>, title: 'Abnormal event confirmed', text: 'Recording on this device only, and your family, doctor and caretaker have been alerted.' },
 }
 
@@ -34,23 +34,24 @@ export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, 
   const kind = src.cctvKind
   return <Card className="cmp-camera">
     <div className="card-head"><div><p className="eyebrow">PRIVACY-FIRST WATCH</p><h2>Thermal sensor and CCTV</h2></div><Badge tone={copy.tone}>{copy.icon} {copy.title}</Badge></div>
-    <p className="cmp-note cmp-lead"><Lock/> {!profile.sensorEscalationConsent ? 'Safety-sensor consent is off. Thermal and CCTV remain off; Asha uses voice check-ins and approved care-circle alerts instead.' : thermal.status === 'off' ? 'Safety sensors are approved but remain off. Thermal starts only after an unanswered check-in; CCTV still requires an abnormal thermal event.' : copy.text}</p>
+    <p className="cmp-note cmp-lead"><Lock/> {!profile.sensorEscalationConsent ? 'Safety-sensor consent is off. Thermal and CCTV remain off; Asha uses voice check-ins and approved care-circle alerts instead.' : thermal.status === 'off' && src.kind === 'phone' && src.alwaysOn ? 'The thermal phone starts watching heat shapes when AI care mode is on. The camera phone stays off until a change in your voice, your words or the thermal watch calls for a live look.' : thermal.status === 'off' ? 'Safety sensors are approved but remain off. Thermal starts only after an unanswered check-in; CCTV still requires an abnormal thermal event.' : copy.text}</p>
     <div className="cmp-cams">
       <figure><div className="cmp-video cmp-thermalbox">{thermal.frame ? <Heatmap frame={thermal.frame}/> : <div className="cmp-video-off"><Flame/><b>{SENSOR_LABEL[thermal.status]}</b></div>}</div><figcaption><Flame/> Thermal · {SENSOR_LABEL[thermal.status]}{thermal.analysis?.presence && ` · skin ${thermal.analysis.skinTop}°C · ${thermal.analysis.posture}`}</figcaption></figure>
       <figure><div className="cmp-video">
         <video ref={cctv.videoRef} muted playsInline className={kind === 'webcam' && cctv.status === 'live' ? '' : 'cmp-hidden'}/>
         {kind === 'ip' && src.cctvUrl && cctv.on && <img ref={cctv.imgRef} src={src.cctvUrl} crossOrigin="anonymous" alt="IP camera feed" {...cctv.ipHandlers}/>}
+        {kind === 'phone' && cctv.on && <img ref={cctv.imgRef} className={cctv.status === 'live' ? '' : 'cmp-hidden'} alt="Camera phone picture"/>}
         {!(cctv.on && cctv.status === 'live') && <div className="cmp-video-off"><CameraOff/><b>{cctv.on ? SENSOR_LABEL[cctv.status] : 'CCTV off'}</b><small>{cctv.on ? 'Opening the camera… if it cannot open, voice check-ins are used.' : 'Stays off until needed.'}</small></div>}
       </div><figcaption>{cctv.on ? <Camera/> : <CameraOff/>} CCTV · {cctv.on ? 'on for a live check' : 'off'}</figcaption></figure>
     </div>
     {thermal.active.length > 0 && <p className="cmp-note"><b>Thermal sensor reports:</b> {thermal.active.join(', ')}</p>}
     <div className="form-stack cmp-form">
       <div className="form-grid">
-        <label>Thermal camera<select value={src.kind} onChange={e => setThermalSource({ kind: e.target.value })}><option value="sim">Built-in simulator (no hardware)</option><option value="http">Thermal camera gateway (HTTP JSON)</option></select></label>
+        <label>Thermal camera<select value={src.kind} onChange={e => setThermalSource({ kind: e.target.value })}><option value="sim">Built-in simulator (no hardware)</option><option value="http">Thermal camera gateway (HTTP JSON)</option><option value="phone">Thermal phone (see Phone cameras)</option></select></label>
         <label>Gateway URL<input value={src.url} disabled={src.kind !== 'http'} placeholder="http://192.168.1.30/frame.json" onChange={e => setThermalSource({ url: e.target.value })}/></label>
       </div>
       <div className="form-grid">
-        <label>CCTV type<select value={kind} onChange={e => setThermalSource({ cctvKind: e.target.value })}><option value="webcam">This device’s camera</option><option value="ip">IP / CCTV camera (MJPEG URL)</option></select></label>
+        <label>CCTV type<select value={kind} onChange={e => setThermalSource({ cctvKind: e.target.value })}><option value="webcam">This device’s camera</option><option value="ip">IP / CCTV camera (MJPEG URL)</option><option value="phone">Camera phone (switches on only when needed)</option></select></label>
         <label>CCTV stream URL<input value={src.cctvUrl} disabled={kind !== 'ip'} placeholder="http://192.168.1.20/video.mjpg" onChange={e => setThermalSource({ cctvUrl: e.target.value })}/></label>
       </div>
     </div>

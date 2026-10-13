@@ -262,7 +262,13 @@ export function companionReply({ analysis, name = 'friend', companion = 'Asha', 
   return say('default')
 }
 
-export const checkInPrompt = (name, attempt, lang = 'en') => localize(lang, attempt === 0 ? 'checkIn0' : 'checkIn1', { first: name.split(' ')[0] })
+/** How to show a saved companion event. Older or seeded events may lack a level or reasons, so fall back gently. */
+export const eventView = (event) => ({
+  level: Number.isInteger(event?.level) && event.level >= 0 && event.level <= 3 ? event.level : 0,
+  text: Array.isArray(event?.reasons) && event.reasons.length ? event.reasons.join(', ') : event?.text || event?.kind || 'Event',
+})
+
+export const checkInPrompt =(name, attempt, lang = 'en') => localize(lang, attempt === 0 ? 'checkIn0' : 'checkIn1', { first: name.split(' ')[0] })
 
 /** Compact, structured snapshot that the AI keeps for each patient so analysis stays quick. */
 export function buildSnapshot({ patient, records = [], meds = [], moods = [], events = [], now = Date.now() }) {

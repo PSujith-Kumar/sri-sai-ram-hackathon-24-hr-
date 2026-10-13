@@ -59,6 +59,18 @@ function pickVoice(voices, lang, preferredURI) {
   return voices.find(v => v.lang.toLowerCase().startsWith(lang)) || (lang === 'en' ? preferred : null) || null
 }
 
+// How the voice adjusts to the patient's mood: small multipliers on the speed and pitch they chose, never extreme.
+// Skipped when "Adapt communication style" is off.
+export const MOOD_SPEECH = {
+  low: { rate: 0.9, pitch: 0.95 }, anxious: { rate: 0.88, pitch: 0.97 }, tired: { rate: 0.85, pitch: 0.95 },
+  angry: { rate: 0.9, pitch: 0.92 }, distressed: { rate: 0.88, pitch: 0.95 }, happy: { rate: 1, pitch: 1.04 },
+}
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
+export function speechStyle(profile, mood) {
+  const m = profile.adaptiveTone ? MOOD_SPEECH[mood] : null
+  return { rate: clamp(profile.rate * (m?.rate ?? 1), 0.5, 2), pitch: clamp(profile.pitch * (m?.pitch ?? 1), 0.5, 2) }
+}
+
 export function useVoice({ profile, patientId, onProblem }) {
   const [voices, setVoices] = useState([])
   const [speaking, setSpeaking] = useState(false)
@@ -79,22 +91,23 @@ export function useVoice({ profile, patientId, onProblem }) {
     return () => synth.removeEventListener('voiceschanged', load)
   }, [synth])
 
-  const speakWithBrowser = useCallback((text, lang) => new Promise((resolve) => {
+  const speakWithBrowser = useCallback((text, lang, mood = null) => new Promise((resolve) => {
     if (!synth) return resolve()
     synth.cancel()
     const utter = new SpeechSynthesisUtterance(text)
     const voice = pickVoice(synth.getVoices(), lang, profile.voiceURI)
     utter.lang = voice ? voice.lang : `${lang}-IN`
     if (voice) utter.voice = voice
-    utter.rate = profile.rate
-    utter.pitch = profile.pitch
+    const style = speechStyle(profile, mood)
+    utter.rate = style.rate
+    utter.pitch = style.pitch
     utter.onend = () => resolve()
     utter.onerror = () => resolve()
     synth.speak(utter)
-  }), [synth, profile.voiceURI, profile.rate, profile.pitch])
+  }), [synth, profile.voiceURI, profile.rate, profile.pitch, profile.adaptiveTone])
 
   /** Speaks `text`. `lang` is 'en' | 'hi' | 'ta' so the reply is voiced in the language it is written in. */
-  const speak = useCallback(async (text, lang = 'en') => {
+  const speak = useCallback(async (text, lang = 'en', mood = null) => {
     setSpeaking(true)
     try {
       const sample = TTS_ENDPOINT ? loadVoiceSample(patientId) : null
@@ -111,7 +124,7 @@ export function useVoice({ profile, patientId, onProblem }) {
           // offline or provider down: fall back to the on-device voice
         }
       }
-      await speakWithBrowser(text, lang)
+      await speakWithBrowser(text, lang, mood)
     } finally {
       setSpeaking(false)
     }

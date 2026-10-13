@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { phoneLinkPlugin } from './server/phonePlugin.js'
 
 // Local services reached through same-origin proxies, so the browser never hits CORS:
 //   /ollama      Gemma 3 conversation (Ollama)
@@ -42,7 +43,7 @@ export default defineConfig(({ mode }) => {
     },
   }
   return {
-    plugins: [react(), openRouterGuard(key)],
+    plugins: [react(), openRouterGuard(key), phoneLinkPlugin()],
     build: { outDir: 'dist', emptyOutDir: true },
     server: { proxy },
     preview: { proxy },
