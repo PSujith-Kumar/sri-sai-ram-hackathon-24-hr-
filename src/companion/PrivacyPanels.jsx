@@ -34,7 +34,7 @@ export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, 
   const kind = src.cctvKind
   return <Card className="cmp-camera">
     <div className="card-head"><div><p className="eyebrow">PRIVACY-FIRST WATCH</p><h2>Thermal sensor and CCTV</h2></div><Badge tone={copy.tone}>{copy.icon} {copy.title}</Badge></div>
-    <p className="cmp-note cmp-lead"><Lock/> {copy.text}</p>
+    <p className="cmp-note cmp-lead"><Lock/> {!profile.sensorEscalationConsent ? 'Safety-sensor consent is off. Thermal and CCTV remain off; Asha uses voice check-ins and approved care-circle alerts instead.' : thermal.status === 'off' ? 'Safety sensors are approved but remain off. Thermal starts only after an unanswered check-in; CCTV still requires an abnormal thermal event.' : copy.text}</p>
     <div className="cmp-cams">
       <figure><div className="cmp-video cmp-thermalbox">{thermal.frame ? <Heatmap frame={thermal.frame}/> : <div className="cmp-video-off"><Flame/><b>{SENSOR_LABEL[thermal.status]}</b></div>}</div><figcaption><Flame/> Thermal · {SENSOR_LABEL[thermal.status]}{thermal.analysis?.presence && ` · skin ${thermal.analysis.skinTop}°C · ${thermal.analysis.posture}`}</figcaption></figure>
       <figure><div className="cmp-video">
@@ -54,7 +54,8 @@ export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, 
         <label>CCTV stream URL<input value={src.cctvUrl} disabled={kind !== 'ip'} placeholder="http://192.168.1.20/video.mjpg" onChange={e => setThermalSource({ cctvUrl: e.target.value })}/></label>
       </div>
     </div>
-    <div className="cmp-demo"><b>Demo: thermal sensor</b>{SCENARIOS.map(s => <button key={s} type="button" className={`btn btn-secondary ${scenario === s ? 'cmp-on' : ''}`} onClick={() => setScenario(s)}>{SCENARIO_LABEL[s]}</button>)}<button className="btn btn-secondary" type="button" onClick={() => setSensorLoss(!sensorLoss)}>{sensorLoss ? 'Restore sensor' : 'Simulate sensor loss'}</button></div>
+    <div className="cmp-demo"><b>Demo: thermal sensor</b>{SCENARIOS.map(s => <button key={s} type="button" disabled={!profile.sensorEscalationConsent} className={`btn btn-secondary ${scenario === s ? 'cmp-on' : ''}`} onClick={() => setScenario(s)}>{SCENARIO_LABEL[s]}</button>)}<button className="btn btn-secondary" disabled={!profile.sensorEscalationConsent} type="button" onClick={() => setSensorLoss(!sensorLoss)}>{sensorLoss ? 'Restore sensor' : 'Simulate sensor loss'}</button></div>
+    {!profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> Enable “Allow safety sensors after no reply” in AI &amp; privacy settings before running sensor demos.</p>}
     <p className="cmp-note"><ShieldCheck/> Nothing is saved or shared unless something abnormal is confirmed. A thermal gateway should return JSON like <code>{'{"width":32,"height":24,"temps":[…°C]}'}</code>. Temperature flags are screening hints, not a diagnosis.</p>
   </Card>
 }

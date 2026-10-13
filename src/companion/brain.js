@@ -24,6 +24,7 @@ const SYMPTOM_RULES = [
   { re: /(don'?t|do not) want to (live|be here|go on)|end my life|kill myself|hurt myself|better off (dead|without me)|tired of living|wish i (were|was) dead|no reason to (live|go on)|ending it all|disappear (for good|forever)|(don'?t|do not) see (why|the point)[^.]{0,30}(carry on|go on|live|continue)/i, code: 'MH', level: 3, selfNegating: true },
   { re: /\bi fell\b|\bfell down\b|had a fall|slipped (and|on)|tumbled|stumbled|landed on the (floor|ground)|lost my balance|legs gave way/i, code: 'FL', level: 2 },
   { re: /help me|i need help|emergency|call (a |the )?doctor/i, code: 'HP', level: 2 },
+  { re: /\b(panic attack|i am panicking|i'm panicking|having a panic)\b/i, code: 'ML', level: 2 },
   { re: /dizz(y|iness)|light-?headed|blurred vision|headache/i, code: 'SY', level: 1 },
   { re: /\bpain\b|hurts?|vomit|nausea|fever/i, code: 'PN', level: 1 },
   // Hindi / Tamil, in script and romanised (no \b: it does not work for non-Latin scripts)

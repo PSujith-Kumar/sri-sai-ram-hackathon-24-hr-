@@ -17,10 +17,10 @@ export const seedData = {
     { id: 'u-admin', name: 'Kavya Raman', email: 'admin@carebridge.demo', role: 'admin', title: 'Network Administrator', hospitalIds: ['h1','h2'], initials: 'KR' },
     { id: 'u-dean', name: 'Dr. Nandini Iyer', email: 'dean@sanjeevani.demo', role: 'dean', title: 'Hospital Dean', hospitalIds: ['h1'], initials: 'NI' },
     { id: 'u-head', name: 'Dr. Vikram Sen', email: 'head.cardio@sanjeevani.demo', role: 'head', title: 'Head of Cardiology', hospitalIds: ['h1'], departmentId: 'd-card', specialization: 'Cardiology', initials: 'VS' },
-    { id: 'u-meera', name: 'Dr. Meera Shah', email: 'meera@sanjeevani.demo', role: 'doctor', title: 'Consultant Cardiologist', hospitalIds: ['h1'], departmentId: 'd-card', specialization: 'Interventional Cardiology', initials: 'MS' },
+    { id: 'u-meera', name: 'Dr. Meera Shah', email: 'meera@sanjeevani.demo', phone: '+919800000102', role: 'doctor', title: 'Consultant Cardiologist', hospitalIds: ['h1'], departmentId: 'd-card', specialization: 'Interventional Cardiology', initials: 'MS' },
     { id: 'u-arjun', name: 'Dr. Arjun Rao', email: 'arjun@sanjeevani.demo', role: 'doctor', title: 'Orthopaedic Specialist', hospitalIds: ['h1'], departmentId: 'd-ortho', specialization: 'Joint Care', initials: 'AR' },
     { id: 'u-ananya', name: 'Ananya Kumar', email: 'ananya@carebridge.demo', role: 'patient', title: 'Patient', hospitalIds: ['h1'], patientId: 'p1', initials: 'AK' },
-    { id: 'u-ravi', name: 'Ravi Kumar', email: 'ravi@carebridge.demo', role: 'family', title: 'Approved family caregiver', hospitalIds: ['h1'], initials: 'RK' },
+    { id: 'u-ravi', name: 'Ravi Kumar', email: 'ravi@carebridge.demo', phone: '+919800000101', role: 'family', title: 'Approved family caregiver', hospitalIds: ['h1'], initials: 'RK' },
     { id: 'u-priya', name: 'Priya Nair', email: 'priya@carebridge.demo', role: 'patient', title: 'Patient', hospitalIds: ['h1'], patientId: 'p2', initials: 'PN' },
   ],
   patients: [

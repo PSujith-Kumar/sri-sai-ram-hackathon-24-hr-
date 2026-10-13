@@ -8,11 +8,14 @@ CareBridge is a connected, multi-hospital healthcare-assistance prototype create
 - Hospital hierarchy from network admin to dean, department heads and specialist doctors.
 - Relationship-scoped patient access: patients see themselves, doctors see assigned patients, and family members see only approved relatives.
 - **QueueCare:** Shared queue state across doctor, patient and family dashboards.
-- **CareClue:** Fictional test hospitals with shortest-path and wheelchair-accessible routing.
+- **ClinicCompass:** Fictional test hospitals with shortest-path and wheelchair-accessible routing.
 - **HealthStory:** Patient-controlled medical-record timeline with family sharing controls.
 - **CareCircle:** Patient check-ins and caregiver acknowledgements.
 - **MedMinder:** Medication schedules and dose status based on existing instructions.
 - Printable visit summaries and responsive mobile layouts.
+- **AI Companion:** Patient-specific voice/chat support, non-diagnostic wellbeing signals, report-aware responses and medication/queue assistance.
+- **Adaptive safety settings:** 30-day browser memory, repeat avoidance, patient feedback replay, favourite-contact escalation and explicit thermal/CCTV consent.
+- **Emergency card:** User-confirmed call actions for India emergency `112` and Tele-MANAS `14416`, with a prepared medical briefing for approved contacts.
 
 ## Demo accounts
 
@@ -45,8 +48,10 @@ This repository is a hackathon demonstration using fictional hospitals and patie
 
 Queue times are estimates. Medication schedules are entered by the user and do not change clinical instructions. MindMate entries remain private to the browser unless the user exports or shares them independently.
 
+AI conversation and mood indicators are supportive, non-diagnostic signals. Chat memory expires after 30 days and can be disabled or cleared from the patient settings page. Thermal monitoring starts only after an unanswered check-in when the patient has opted in; CCTV requires an abnormal thermal event. Browsers cannot silently complete phone/USSD calls, so every real call or text remains user-confirmed. The `*123*…#` path is a fictional hospital relay for testing, not a national emergency number.
+
 ## Deployment
 
-Private preview: <https://carebridge-sairam.chummy-tune-1523.chatgpt.site>
+Live preview: <https://carebridge-sairam-live.glossyharp64.chatgpt.site/>
 
 The deployable Vite output is generated in `dist/`.
