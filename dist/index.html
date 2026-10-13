@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="CareBridge — connected healthcare assistance for patients, caregivers and hospital teams.">
+  <meta name="theme-color" content="#073d3a">
+  <title>CareBridge — Connected care</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=DM+Serif+Display&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg class="svg-sprite" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1Z"/></symbol>
+    <symbol id="i-queue" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><path d="m9 18-6 3V6l6-3 6 3 6-3v15l-6 3-6-3Zm0 0V3m6 18V6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Zm0 0v6h6M8 13h8M8 17h6"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/></symbol>
+    <symbol id="i-pill" viewBox="0 0 24 24"><path d="m10.5 20.5 10-10a5 5 0 0 0-7-7l-10 10a5 5 0 0 0 7 7ZM8.5 8.5l7 7"/></symbol>
+    <symbol id="i-mood" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2"/><path d="M9 18h6"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m20 6-11 11-5-5"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2m-9 0 1 15h8l1-15M10 10v7m4-7v7"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4 16 7h4a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h4l1.5-3Z"/><circle cx="12" cy="13" r="4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand"><span class="brand-mark">C<span>+</span></span><span><strong>CareBridge</strong><small>Connected care</small></span></div>
+      <nav aria-label="Main navigation" id="nav">
+        <button class="nav-item active" data-page="dashboard"><svg><use href="#i-home"/></svg><span>Overview</span></button>
+        <button class="nav-item" data-page="queue"><svg><use href="#i-queue"/></svg><span>QueueCare</span></button>
+        <button class="nav-item" data-page="map"><svg><use href="#i-map"/></svg><span>CareClue</span></button>
+        <button class="nav-item" data-page="records"><svg><use href="#i-file"/></svg><span>HealthStory</span></button>
+        <button class="nav-item" data-page="circle"><svg><use href="#i-heart"/></svg><span>CareCircle</span></button>
+        <button class="nav-item" data-page="meds"><svg><use href="#i-pill"/></svg><span>MedMinder</span></button>
+        <button class="nav-item" data-page="mind"><svg><use href="#i-mood"/></svg><span>MindMate</span></button>
+        <button class="nav-item" data-page="ussd"><svg><use href="#i-phone"/></svg><span>Low-data access</span></button>
+      </nav>
+      <div class="sidebar-note"><span class="status-dot"></span><span><strong>Demo mode</strong><small>Fictional hospital data</small></span></div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <button class="icon-btn mobile-only" id="menuBtn" aria-label="Open navigation" aria-expanded="false"><svg><use href="#i-menu"/></svg></button>
+        <div><p class="eyebrow" id="pageEyebrow">Tuesday, 13 October</p><h1 id="pageTitle">Good evening, Ananya</h1></div>
+        <div class="top-actions">
+          <label class="role-control"><span>View as</span><select id="roleSelect"><option value="patient">Patient</option><option value="caregiver">Caregiver</option><option value="staff">Hospital staff</option></select></label>
+          <button class="icon-btn" id="notifyBtn" aria-label="Enable medication notifications"><svg><use href="#i-bell"/></svg><span class="notification-dot"></span></button>
+          <div class="avatar" aria-label="Profile: Ananya">AK</div>
+        </div>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <section class="page active" id="page-dashboard" aria-labelledby="pageTitle">
+          <div class="welcome-card">
+            <div><p class="kicker">YOUR CARE, CONNECTED</p><h2>Everything you need for a calmer hospital day.</h2><p>Track your turn, find your way, and keep the people you trust in the loop.</p><button class="primary-btn" data-go="queue">View my queue status <span>→</span></button></div>
+            <div class="pulse-art" aria-hidden="true"><span></span><span></span><svg viewBox="0 0 220 100"><path d="M0 55h42l12-22 18 48 22-64 20 38h32l12-18 14 18h48"/></svg><b>C+</b></div>
+          </div>
+          <div class="section-heading"><div><p class="eyebrow">TODAY AT A GLANCE</p><h2>Your care plan</h2></div><button class="text-btn" id="resetDemo">Reset demo data</button></div>
+          <div class="overview-grid">
+            <article class="feature-card queue-card" data-go="queue"><div class="card-icon"><svg><use href="#i-queue"/></svg></div><span class="live-pill">LIVE</span><p>QueueCare</p><h3 id="dashToken">CAR-025</h3><div class="metric-row"><span>Now serving <b id="dashServing">CAR-020</b></span><span>Est. wait <b id="dashWait">18–28 min</b></span></div><button class="card-link">Open live queue <span>→</span></button></article>
+            <article class="feature-card" data-go="map"><div class="card-icon mint"><svg><use href="#i-map"/></svg></div><p>CareClue</p><h3>Cardiology, 2F</h3><p class="muted">8 min · Lift-accessible route</p><div class="mini-route"><i></i><span></span><i></i><span></span><i></i></div><button class="card-link">Continue directions <span>→</span></button></article>
+            <article class="feature-card" data-go="meds"><div class="card-icon coral"><svg><use href="#i-pill"/></svg></div><p>MedMinder</p><h3 id="dashMed">1 dose due</h3><p class="muted">Next schedule at 8:00 PM</p><button class="card-link">View medication plan <span>→</span></button></article>
+          </div>
+          <div class="dashboard-lower">
+            <section class="panel"><div class="panel-head"><div><p class="eyebrow">RECENT ACTIVITY</p><h2>Care timeline</h2></div><button class="text-btn" data-go="records">View records</button></div><div class="timeline" id="dashboardTimeline"></div></section>
+            <section class="panel checkin-panel"><p class="eyebrow">CARECIRCLE</p><h2>How are you doing?</h2><p>One tap lets your caregiver know.</p><div class="checkin-actions"><button data-checkin="I’m okay"><svg><use href="#i-check"/></svg>I’m okay</button><button data-checkin="I need help" class="help"><svg><use href="#i-bell"/></svg>I need help</button></div><p class="tiny" id="lastCheckin">No check-in sent today</p></section>
+          </div>
+        </section>
+
+        <section class="page" id="page-queue">
+          <div class="module-hero compact"><div><p class="kicker">QUEUECARE · LIVE</p><h2>Know your turn without the uncertainty.</h2><p>Estimates update as consultations are completed. They are guidance, not guaranteed appointment times.</p></div><div class="live-clock"><span class="status-dot"></span><span>Queue synced</span><b id="queueClock">--:--</b></div></div>
+          <div class="queue-layout">
+            <section class="token-board panel"><div class="token-top"><span>Your token</span><span id="queueState" class="badge success">Queue active</span></div><strong id="patientToken">CAR-025</strong><p>Cardiology · Dr. Meera Shah · Room 204</p><div class="queue-progress" aria-label="Queue progress"><span id="progressFill"></span></div><div class="queue-stats"><div><small>Now serving</small><b id="nowServing">CAR-020</b></div><div><small>People ahead</small><b id="aheadCount">4</b></div><div><small>Estimated wait</small><b id="waitEstimate">18–28 min</b></div></div></section>
+            <section class="panel"><div class="panel-head"><div><p class="eyebrow">JOIN A QUEUE</p><h2>Get a digital token</h2></div></div><form id="tokenForm" class="stack-form"><label>Department<select id="tokenDept"><option value="CAR">Cardiology</option><option value="ORT">Orthopaedics</option><option value="GEN">General medicine</option></select></label><label>Doctor<select><option>Dr. Meera Shah</option><option>Dr. Arjun Rao</option></select></label><button class="primary-btn" type="submit">Generate token</button><p class="form-note" id="tokenMessage">One active token per department.</p></form></section>
+          </div>
+          <section class="panel staff-only"><div class="panel-head"><div><p class="eyebrow">STAFF CONTROLS</p><h2>Consultation desk</h2></div><span class="badge">Role-restricted demo</span></div><div class="staff-controls"><button class="secondary-btn" id="callNext">Call next patient</button><button class="primary-btn" id="completeConsult">Complete consultation</button><button class="danger-btn" id="togglePause">Pause queue</button></div><div class="service-log" id="queueLog"></div></section>
+        </section>
+
+        <section class="page" id="page-map">
+          <div class="module-hero compact"><div><p class="kicker">CARECLUE · FICTIONAL FLOOR PLAN</p><h2>Find the calmest path to your care.</h2><p>Choose your starting point and destination. Accessible routes avoid stairs.</p></div></div>
+          <div class="map-layout">
+            <section class="panel route-form"><h2>Plan your route</h2><form id="routeForm" class="stack-form"><label>Start<select id="routeStart"></select></label><label>Destination<select id="routeEnd"></select></label><label class="toggle-row"><input type="checkbox" id="accessibleRoute" checked><span class="toggle"></span><span><b>Wheelchair-friendly</b><small>Avoid stairs and inaccessible corridors</small></span></label><button class="primary-btn" type="submit">Find route</button></form><div class="route-result" id="routeResult"></div></section>
+            <section class="panel map-panel"><div class="map-legend"><span><i class="legend route"></i>Suggested route</span><span><i class="legend lift"></i>Lift</span><span><i class="legend stairs"></i>Stairs</span></div><svg id="hospitalMap" viewBox="0 0 720 420" role="img" aria-label="Fictional hospital floor plan"></svg><p class="map-caption">Demo floor plan · Verify directions with hospital staff in a real facility.</p></section>
+          </div>
+        </section>
+
+        <section class="page" id="page-records">
+          <div class="module-hero compact"><div><p class="kicker">HEALTHSTORY · PRIVATE TO YOU</p><h2>Your health documents, in one clear timeline.</h2><p>Store demonstration reports locally in this browser. Nothing is uploaded to a hospital system.</p></div><button class="primary-btn" id="openRecordForm"><svg><use href="#i-plus"/></svg>Add record</button></div>
+          <div class="filter-row"><label>Search records<input id="recordSearch" type="search" placeholder="Hospital, title or type"></label><label>Filter by type<select id="recordFilter"><option value="all">All types</option><option>Lab report</option><option>Prescription</option><option>Scan</option><option>Discharge summary</option></select></label></div>
+          <div class="records-list" id="recordsList"></div>
+        </section>
+
+        <section class="page" id="page-circle">
+          <div class="module-hero compact"><div><p class="kicker">CARECIRCLE · CONSENT CONTROLLED</p><h2>Support is closer when your circle stays connected.</h2><p>Check in, ask for help, and manage exactly what an approved caregiver can see.</p></div><span class="badge success" id="circleAccess">Caregiver access on</span></div>
+          <div class="circle-grid">
+            <section class="panel"><p class="eyebrow">QUICK CHECK-IN</p><h2>How are you right now?</h2><div class="large-checkins"><button data-checkin="I’m okay"><svg><use href="#i-check"/></svg><span><b>I’m okay</b><small>Send a reassuring update</small></span></button><button data-checkin="Please call me"><svg><use href="#i-phone"/></svg><span><b>Please call me</b><small>Ask your caregiver to call</small></span></button><button data-checkin="I need help" class="urgent"><svg><use href="#i-bell"/></svg><span><b>I need help</b><small>Send a high-priority request</small></span></button></div></section>
+            <section class="panel"><div class="panel-head"><div><p class="eyebrow">CAREGIVER PERMISSIONS</p><h2>Shared with Ravi</h2></div><div class="avatar small">RK</div></div><label class="toggle-row"><input type="checkbox" class="permission" data-permission="checkins" checked><span class="toggle"></span><span><b>Check-ins & requests</b><small>Required for coordination</small></span></label><label class="toggle-row"><input type="checkbox" class="permission" data-permission="meds" checked><span class="toggle"></span><span><b>Medication status</b><small>Never shares private journal entries</small></span></label><label class="toggle-row"><input type="checkbox" class="permission" data-permission="records"><span class="toggle"></span><span><b>Selected health records</b><small>Off by default</small></span></label></section>
+            <section class="panel camera-card"><div><p class="eyebrow">OPTIONAL VIDEO CHECK-IN</p><h2>Patient-controlled camera</h2><p>The camera starts only after your browser asks for permission.</p></div><video id="cameraVideo" autoplay muted playsinline></video><div class="camera-placeholder" id="cameraPlaceholder"><svg><use href="#i-camera"/></svg><span>Camera is off</span></div><button class="secondary-btn" id="cameraToggle">Start camera</button></section>
+            <section class="panel"><div class="panel-head"><div><p class="eyebrow">REQUESTS</p><h2>Care updates</h2></div></div><div id="careRequests" class="request-list"></div></section>
+          </div>
+        </section>
+
+        <section class="page" id="page-meds">
+          <div class="module-hero compact"><div><p class="kicker">MEDMINDER · SCHEDULE TRACKING</p><h2>Keep prescribed routines easy to follow.</h2><p>CareBridge records the schedule you enter. It does not prescribe, calculate, or change doses.</p></div><button class="primary-btn" id="openMedForm"><svg><use href="#i-plus"/></svg>Add medication</button></div>
+          <div class="med-layout"><section class="panel"><div class="panel-head"><div><p class="eyebrow">TODAY</p><h2>Medication schedule</h2></div></div><div id="medList" class="med-list"></div></section><section class="panel"><p class="eyebrow">HISTORY</p><h2>Recent dose events</h2><div id="medHistory" class="history-list"></div></section></div>
+        </section>
+
+        <section class="page" id="page-mind">
+          <div class="module-hero compact mind-hero"><div><p class="kicker">MINDMATE · PRIVATE SPACE</p><h2>A quiet moment to notice how you feel.</h2><p>Your mood and journal stay on this device and are never shared with caregivers automatically.</p></div></div>
+          <div class="mind-grid"><section class="panel"><p class="eyebrow">DAILY CHECK-IN</p><h2>How are you feeling?</h2><div class="mood-picker" id="moodPicker"><button data-mood="1"><span aria-hidden="true">●</span>Very low</button><button data-mood="2"><span aria-hidden="true">●</span>Low</button><button data-mood="3"><span aria-hidden="true">●</span>Neutral</button><button data-mood="4"><span aria-hidden="true">●</span>Good</button><button data-mood="5"><span aria-hidden="true">●</span>Very good</button></div><p class="form-note" id="moodMessage">Select one response. There is no right answer.</p></section><section class="panel"><p class="eyebrow">7-DAY VIEW</p><h2>Your mood pattern</h2><div class="mood-chart" id="moodChart" aria-label="Mood chart"></div></section><section class="panel journal-panel"><p class="eyebrow">PRIVATE JOURNAL</p><h2 id="reflectionPrompt">What felt manageable today?</h2><form id="journalForm"><label for="journalText">Your reflection</label><textarea id="journalText" rows="5" placeholder="Write as much or as little as you like…" required></textarea><div class="form-actions"><button class="primary-btn" type="submit">Save reflection</button><button class="text-btn" type="button" id="newPrompt">New prompt</button></div></form><div id="journalList" class="journal-list"></div></section><aside class="support-note"><strong>MindMate is for reflection, not diagnosis.</strong><p>If you feel unsafe or need urgent help, contact local emergency services or a trusted healthcare professional.</p></aside></div>
+        </section>
+
+        <section class="page" id="page-ussd">
+          <div class="module-hero compact lowdata-hero"><div><p class="kicker">LOW-DATA ACCESS · SIMULATOR</p><h2>Essential hospital information, without a heavy app.</h2><p>This demonstrates USSD menu logic using the same queue data. <code>*123#</code> is fictional and is not a live telecom code.</p></div></div>
+          <div class="ussd-layout"><div class="phone-shell"><div class="phone-screen"><div class="phone-status"><span>CareTel</span><span>USSD</span></div><pre id="ussdScreen" aria-live="polite"></pre></div><div class="ussd-entry"><input id="ussdInput" inputmode="numeric" aria-label="USSD menu response" placeholder="Enter option"><button id="ussdSend">Send</button></div><button class="end-call" id="ussdRestart">Restart session</button></div><section class="panel lowdata-info"><p class="eyebrow">HOW IT WORKS</p><h2>One source of truth</h2><p>When hospital staff advances QueueCare, the queue status here updates too.</p><ol><li><b>1</b><span>Check token status</span></li><li><b>2</b><span>Find a department</span></li><li><b>3</b><span>Check appointment</span></li><li><b>4</b><span>Hospital help desk</span></li></ol><button class="text-btn" id="lowBandwidth">Switch to text-only view</button></section></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <dialog id="recordDialog"><form method="dialog" class="dialog-head"><div><p class="eyebrow">HEALTHSTORY</p><h2>Add a health record</h2></div><button class="icon-btn" value="cancel" aria-label="Close"><svg><use href="#i-x"/></svg></button></form><form id="recordForm" class="dialog-body stack-form"><label>Record title<input name="title" required placeholder="e.g. Blood test results"></label><div class="form-grid"><label>Hospital<input name="hospital" required placeholder="Hospital name"></label><label>Date<input name="date" type="date" required></label></div><label>Record type<select name="type"><option>Lab report</option><option>Prescription</option><option>Scan</option><option>Discharge summary</option></select></label><label>Document (optional, max 1.5 MB)<input name="file" type="file" accept=".pdf,.png,.jpg,.jpeg,text/plain"></label><p class="form-note error" id="recordError"></p><button class="primary-btn" type="submit">Save record</button></form></dialog>
+  <dialog id="medDialog"><form method="dialog" class="dialog-head"><div><p class="eyebrow">MEDMINDER</p><h2>Add prescribed schedule</h2></div><button class="icon-btn" value="cancel" aria-label="Close"><svg><use href="#i-x"/></svg></button></form><form id="medForm" class="dialog-body stack-form"><label>Medication name<input name="name" required placeholder="Name on prescription"></label><div class="form-grid"><label>Instruction<input name="instruction" required placeholder="e.g. 1 tablet"></label><label>Time<input name="time" type="time" required></label></div><label>Schedule note<input name="note" placeholder="e.g. After dinner"></label><button class="primary-btn" type="submit">Add to schedule</button></form></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
