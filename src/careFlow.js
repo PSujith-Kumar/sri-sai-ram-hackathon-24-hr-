@@ -104,5 +104,7 @@ export function hydrateCareData(stored, seed) {
     }),
     queues: (source.queues || seed.queues || []).map(queue => ({ ...queue, updatedAt: queue.updatedAt || now })),
     notifications: Array.isArray(source.notifications) ? source.notifications : (seed.notifications || []),
+    // hospital maps: built-in ones plus any the admin created or edited (stored ones win)
+    floorPlans: { ...(seed.floorPlans || {}), ...(source.floorPlans || {}) },
   }
 }

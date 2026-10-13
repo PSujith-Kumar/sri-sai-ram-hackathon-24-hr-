@@ -255,3 +255,55 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .map-ai-result small { display: block; margin-top: 8px; color: #526965; }
 .map-ai-warn { display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #fbeee9; color: #7d2f20; font-size: 14px; }
 .map-ai-warn svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+
+/* ---- Admin: hospital map editor, user create / delete ---- */
+.modal-wide { width: min(1080px, 100%); }
+.wizard-steps { display: flex; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
+.wizard-steps li { padding: 6px 12px; border-radius: 999px; background: #edf1ef; color: #526965; font-size: 13px; font-weight: 700; }
+.wizard-steps li.on { background: #138f84; color: #fff; }
+.wizard-steps li.done { background: #def2e7; color: #1d6849; }
+.wizard-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.field-error { color: #a54835; font-size: 13px; font-weight: 400; }
+.map-missing { color: #a54835; font-weight: 700; }
+.btn-danger { background: #b4402c; border-color: #b4402c; color: #fff; }
+.btn-danger:hover:not(:disabled) { background: #8f301f; }
+.delete-impact { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.map-editor-start { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; }
+.map-editor-start b { margin-right: 4px; }
+.map-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 900px) { .map-editor-grid { grid-template-columns: minmax(0, 1fr); } }
+.map-editor h3 { margin: 14px 0 8px; font-size: 16px; }
+.map-editor h3 small { color: #647b76; font-weight: 400; margin-left: 6px; }
+.map-rows { display: grid; gap: 8px; margin-bottom: 10px; }
+.map-row { display: grid; gap: 6px; align-items: center; }
+.map-row-place { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr) 44px; }
+.map-row-path { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px 44px 44px; }
+.map-row input[type=text], .map-row input:not([type]), .map-row input[type=number], .map-row select { min-width: 0; min-height: 40px; border: 1px solid #cbd8d3; border-radius: 10px; padding: 6px 8px; background: #fff; }
+.map-check { display: grid; place-items: center; min-height: 40px; border: 1px solid #cbd8d3; border-radius: 10px; background: #fff; cursor: pointer; }
+.map-check input { position: absolute; opacity: 0; }
+.map-check svg { width: 20px; height: 20px; color: #9aa9a4; }
+.map-check:has(input:checked) { border-color: #138f84; background: #e3f4ef; }
+.map-check:has(input:checked) svg { color: #0b7a6e; }
+.map-check:has(input:focus-visible) { outline: 3px solid #2b70d5; outline-offset: 2px; }
+.map-help { color: #647b76; font-size: 13px; }
+.map-preview { position: relative; }
+.map-preview-empty { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: #647b76; text-align: center; padding: 20px; }
+.map-checks { display: grid; gap: 6px; margin-top: 10px; }
+.map-checks p { display: flex; gap: 8px; align-items: flex-start; margin: 0; padding: 8px 10px; border-radius: 10px; font-size: 14px; }
+.map-checks svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
+.map-error { background: #fbeee9; color: #7d2f20; }
+.map-warning { background: #fbf3dc; color: #7a5710; }
+.map-ok { background: #e3f4ef; color: #1d6849; }
+.people-table.has-actions > .table-head, .people-table.has-actions .people-row { grid-template-columns: 1.5fr .8fr .8fr 1fr 52px; }
+.access-cell { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.access-cell svg { width: 15px; color: #0b7a6e; }
+.people-row > .row-actions { justify-content: flex-end; }
+.people-row > .row-actions svg { width: 18px; color: inherit; }
+@media (max-width: 560px) {
+  .map-row-place { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 44px; }
+  .map-row-place > input { grid-column: 1 / -1; }
+  .map-row-path { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 62px 44px 44px; }
+  .map-row-path > select { grid-column: span 2; }
+  .map-row-path > select:first-child { grid-column: 1 / 3; }
+  .map-editor-start .btn { flex: 1 1 100%; }
+}
