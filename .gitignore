@@ -4,3 +4,8 @@ node_modules/
 Thumbs.db
 
 ml/artifacts/
+
+# local secrets (never commit)
+.env
+.env.local
+.env.*.local

@@ -235,3 +235,23 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .cmp-consent-note svg { width: 18px; flex: none; }
 @media (max-width: 900px) { .cmp-settings-grid { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .cmp-input { align-items: stretch; flex-wrap: wrap; } .cmp-input input { min-width: 0; flex: 1 1 calc(100% - 54px); } .cmp-input .btn { width: 100%; } .cmp-memory-foot .btn { width: 100%; margin-left: 0; } }
+
+/* ---- ClinicCompass route analysis ---- */
+.map-ai { margin-top: 18px; padding-top: 16px; border-top: 1px solid #dce6e1; }
+.map-ai-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+.map-ai-note { margin: 8px 0; color: #36524e; font-size: 14px; }
+.map-ai-toggle { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-weight: 700; }
+.map-ai-toggle span { display: inline-flex; align-items: center; gap: 6px; }
+.map-ai-toggle svg { width: 16px; height: 16px; }
+.map-ai-panel { display: grid; gap: 10px; margin-top: 10px; padding: 12px; border: 1px solid #d8e1dc; border-radius: 14px; background: #fff; }
+.map-ai-panel .form-grid label { display: grid; gap: 4px; font-size: 13px; font-weight: 700; }
+.map-ai-panel input, .map-ai-panel select { min-height: 40px; border: 1px solid #cbd8d3; border-radius: 10px; padding: 6px 10px; background: #fff; min-width: 0; }
+.map-ai-privacy { display: flex; align-items: center; gap: 6px; margin: 0; color: #526965; font-size: 13px; }
+.map-ai-privacy svg { width: 15px; height: 15px; flex: none; }
+.map-ai-result { margin-top: 12px; padding: 14px; border-radius: 14px; background: #eef7f3; }
+.map-ai-result h3 { margin: 0 0 8px; font-size: 17px; }
+.map-ai-result ol, .map-ai-result ul { margin: 6px 0 10px; padding-left: 20px; }
+.map-ai-result p { margin: 6px 0; }
+.map-ai-result small { display: block; margin-top: 8px; color: #526965; }
+.map-ai-warn { display: flex; gap: 6px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #fbeee9; color: #7d2f20; font-size: 14px; }
+.map-ai-warn svg { width: 16px; height: 16px; flex: none; margin-top: 2px; }
