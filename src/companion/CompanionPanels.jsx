@@ -54,7 +54,7 @@ export function VoicePanel({ voice, profile, setProfile, hasSample, recording, o
 }
 
 export function UnderstandingPanel({ snapshot, events, camera }) {
-  const rows = [['Conditions', snapshot.conditions.join(', ') || 'None recorded'], ['Allergies', snapshot.allergies.join(', ') || 'None recorded'], ['Medicine adherence', `${snapshot.adherence}%`], ['Latest record', snapshot.latestRecord], ['Mood trend', snapshot.moodTrend], ['Alerts in 24h', String(snapshot.alerts24h)]]
+  const rows = [['Conditions', snapshot.conditions.join(', ') || 'None recorded'], ['Allergies', snapshot.allergies.join(', ') || 'None recorded'], ['Medicine adherence', `${snapshot.adherence}%`], ['Latest record', snapshot.latestRecord], ['Latest mood', snapshot.latestMood ? `${snapshot.latestMood.mood}${snapshot.latestMood.confidence ? ` (${Math.round(snapshot.latestMood.confidence * 100)}%)` : ''}` : 'Not heard yet'], ['Mood trend', snapshot.moodTrend], ['Alerts in 24h', String(snapshot.alerts24h)]]
   return <Card className="cmp-profile">
     <div className="card-head"><div><p className="eyebrow">WHAT THE AI KNOWS</p><h2>Patient understanding</h2></div><Badge tone="mint"><Activity/> Auto-updated</Badge></div>
     <dl>{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>

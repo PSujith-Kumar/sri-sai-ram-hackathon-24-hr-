@@ -10,6 +10,7 @@ import { enqueue, isMobileDevice, makeRelayItem, markSent, pending, ussdDialHref
 import { loadVoiceSample, useVoice } from './useVoice'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
+import { loadMoodModel } from './mood'
 
 const DEFAULT_PROFILE = {
   voiceURI: '', rate: 1, pitch: 1, lang: 'en-IN', companionName: 'Asha', autonomous: false, checkInSeconds: 60,
@@ -92,6 +93,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const say = useCallback(async (text) => { addMessage('ai', text); await voice.speak(text) }, [addMessage, voice])
   const refreshClips = useCallback(() => listClips().then(setClips), [])
   useEffect(() => { refreshClips() }, [refreshClips])
+  useEffect(() => { loadMoodModel().catch(() => {}) }, []) // falls back to keyword rules if the model cannot load
 
   const hearReply = useCallback(async (ms) => {
     typedRef.current = null
@@ -141,7 +143,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const processUtterance = useCallback(async (text) => {
     const L = live.current
     const analysis = analyzeUtterance(text, L.ctx)
-    update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, at: new Date().toISOString() }].slice(-60) }))
+    update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, at: new Date().toISOString() }].slice(-60) }))
     if (analysis.intent === 'medicine-taken') {
       const target = L.meds.find(m => m.status !== 'taken')
       if (target) setData(d => ({ ...d, medications: d.medications.map(m => (m.id === target.id ? { ...m, status: 'taken' } : m)) }))

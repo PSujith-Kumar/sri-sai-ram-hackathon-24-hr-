@@ -1,0 +1,86 @@
+{"text": "I woke up feeling really cheerful and had a nice breakfast", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "My granddaughter drew me a picture, it made me smile", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "The nurse says I'm improving, what a relief", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "Feeling quite good this afternoon, thank you for asking", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "Could you remind me when to take the blue tablet", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "What time does the doctor come", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "Is my token close yet", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "Good morning, how are you", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "I already took my morning pills", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "Where can I get a glass of water", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "There is no chest pain, I only wanted to ask about lunch", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "The days here are long and I keep thinking about my home", "mood": "low", "severity": "none", "group": "gold"}
+{"text": "Nobody visited me this week and it hurts", "mood": "low", "severity": "none", "group": "gold"}
+{"text": "I feel like I'm all alone in the world", "mood": "low", "severity": "none", "group": "gold"}
+{"text": "I've been feeling very down lately and I can't eat", "mood": "low", "severity": "watch", "group": "gold"}
+{"text": "I keep crying and have no interest in anything or any food", "mood": "low", "severity": "watch", "group": "gold"}
+{"text": "What if the scan shows something serious, I can't stop thinking about it", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "I am really nervous about the operation next week", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "My mind keeps racing with worry tonight", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "My hands are trembling and I feel jumpy", "mood": "anxious", "severity": "watch", "group": "gold"}
+{"text": "I feel so drained today, I just want to sleep", "mood": "tired", "severity": "none", "group": "gold"}
+{"text": "I have no strength left after that walk", "mood": "tired", "severity": "none", "group": "gold"}
+{"text": "I feel faint and weak every time I stand up", "mood": "tired", "severity": "watch", "group": "gold"}
+{"text": "I hardly slept and now I feel awful and shaky", "mood": "tired", "severity": "watch", "group": "gold"}
+{"text": "This is unacceptable, I have been waiting for hours", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "I'm furious that no one answered my call", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "Stop bothering me, I'm sick of all this", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "My lower back has been aching since yesterday", "mood": "distressed", "severity": "watch", "group": "gold"}
+{"text": "I threw up after breakfast and feel unwell", "mood": "distressed", "severity": "watch", "group": "gold"}
+{"text": "There is a throbbing headache behind my eyes", "mood": "distressed", "severity": "watch", "group": "gold"}
+{"text": "I stumbled in the corridor and landed on the floor", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "The pain in my leg is terrible, I can't stand it", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "Please get someone, I really need help now", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "My lips are swollen and I'm itching all over since the injection", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I've got a very high temperature and I keep throwing up", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "It feels like an elephant is sitting on my chest", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "I can't catch my breath at all", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "I think I'm about to pass out", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "One side of my face has gone numb and my words are coming out wrong", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Blood is pouring from the wound and won't stop", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Sometimes I think everyone would be better off without me", "mood": "low", "severity": "critical", "group": "gold"}
+{"text": "I just want it all to end, I don't want to go on", "mood": "low", "severity": "critical", "group": "gold"}
+{"text": "Suddenly my chest is gripped with a sharp pain and my arm is tingling", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "I'm having trouble breathing and my lips look blue", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Nenju romba vali irukku", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Mujhe bahut ghabrahat ho rahi hai", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "I slipped on the wet floor and I can't get up", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I keep feeling like I will faint whenever I stand", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "I woke up unable to speak properly and my arm is dead weight", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "It's like I'm breathing through a straw", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "My mother is gone and some days I don't see why I should carry on", "mood": "low", "severity": "critical", "group": "gold"}
+{"text": "There's a crushing weight on my ribs and my jaw aches", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "I got a nasty cut and it keeps bleeding through the bandage", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I feel hot all over and the shivering won't stop", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "Could you tell me what is for dinner today", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "The physiotherapist was lovely and I walked further than yesterday", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "I'm dreading the biopsy and I keep imagining the worst", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "I'm completely wiped out this afternoon", "mood": "tired", "severity": "none", "group": "gold"}
+{"text": "The staff keep ignoring my bell and it's infuriating", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "I haven't had any dizziness since yesterday", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "I have been feeling blue and I skip meals most days", "mood": "low", "severity": "watch", "group": "gold"}
+{"text": "A dull ache in my shoulder since the morning", "mood": "distressed", "severity": "watch", "group": "gold"}
+{"text": "I feel a bit giddy when I get up too fast", "mood": "tired", "severity": "watch", "group": "gold"}
+{"text": "Please send a nurse, something is very wrong", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I'm over the moon, my test came back clear", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "Do I need to fast before the scan tomorrow", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "My granddaughter passed her exams and I'm beaming with pride", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "Could you read me the news headlines", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "What's the plan for tomorrow's rounds", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "I can't stop thinking something will go wrong during the surgery", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "My eyelids are heavy and I can barely hold my head up", "mood": "tired", "severity": "none", "group": "gold"}
+{"text": "Every night the noise from the corridor drives me crazy", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "I feel hollow inside and nothing interests me anymore", "mood": "low", "severity": "none", "group": "gold"}
+{"text": "Pain is shooting through my side and it's getting worse", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I'm so dizzy that the floor seems to tilt when I get up", "mood": "distressed", "severity": "watch", "group": "gold"}
+{"text": "I feel a strange tightness around my heart and I'm breaking out in a cold sweat", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Something is stuck in my throat and I'm struggling to get air in", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "My foot gave out and I hit my head on the cupboard", "mood": "distressed", "severity": "urgent", "group": "gold"}
+{"text": "I just feel like giving up on everything", "mood": "low", "severity": "watch", "group": "gold"}
+{"text": "Great news, the stitches come out today and I'm thrilled", "mood": "happy", "severity": "none", "group": "gold"}
+{"text": "Is it okay to eat before my blood test", "mood": "neutral", "severity": "none", "group": "gold"}
+{"text": "I'm sick of being treated like I'm invisible here", "mood": "angry", "severity": "none", "group": "gold"}
+{"text": "The thought of going home alone scares me", "mood": "anxious", "severity": "none", "group": "gold"}
+{"text": "I feel completely worn out after therapy", "mood": "tired", "severity": "none", "group": "gold"}
+{"text": "Everything is dark in front of my eyes and I can't hold myself up", "mood": "distressed", "severity": "critical", "group": "gold"}
+{"text": "Thank you nurse, you really brightened my day", "mood": "happy", "severity": "none", "group": "gold"}
