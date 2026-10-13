@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Power } from 'lucide-react'
 import { Empty, PageTitle } from '../ui'
-import { LEVEL, analyzeUtterance, assessSituation, buildSnapshot, checkInPrompt, companionReply, dueMedications } from './brain'
-import { ConversationPanel, RelayPanel, StatusStrip, UnderstandingPanel, VoicePanel } from './CompanionPanels'
+import { LEVEL, analyzeUtterance, assessSituation, buildSnapshot, checkInPrompt, companionReply, dueMedications, mergeLlmAnalysis } from './brain'
+import { ConversationPanel, ModelPanel, RelayPanel, StatusStrip, UnderstandingPanel, VoicePanel } from './CompanionPanels'
 import { ClipsPanel, ContactsPanel, PrivacyPanel } from './PrivacyPanels'
 import { deleteClip, listClips, saveClip } from './incidentStore'
 import { GUARD_MODE, initialGuard, stepGuard } from './privacy'
@@ -13,6 +13,8 @@ import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
 import { loadMoodModel } from './mood'
+import { LLM_DEFAULTS, askGemma, buildSystemPrompt, checkGemma } from './llm'
+import { CLASSIFIER_DEFAULTS, checkClassifier, classifyRemote } from './remoteModel'
 
 const DEFAULT_PROFILE = {
   voiceURI: '', rate: 1, pitch: 1, lang: 'auto', companionName: 'Asha', autonomous: false, checkInSeconds: 60, voiceBaseline: null,
@@ -24,7 +26,8 @@ const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.ge
 const uid = (p) => `${p}${Date.now()}${Math.floor(Math.random() * 1000)}`
 const toThermalTokens = (reasons) => reasons.map(r => (r === 'inactive' ? 'no-motion' : r))
 const THERMAL_WORDS = { 'possible-fall': 'a possible fall', fever: 'a high body temperature', 'heat-hazard': 'a heat hazard', 'no-motion': 'no movement for a long time' }
-const mergeProfile = (p = {}) => ({ ...DEFAULT_PROFILE, ...p, thermal: { ...DEFAULT_PROFILE.thermal, ...p.thermal }, contacts: p.contacts || [] })
+const mergeProfile = (p = {}) => ({ ...DEFAULT_PROFILE, ...p, thermal: { ...DEFAULT_PROFILE.thermal, ...p.thermal }, llm: { ...LLM_DEFAULTS, ...p.llm }, classifier: { ...CLASSIFIER_DEFAULTS, ...p.classifier }, contacts: p.contacts || [] })
+const ageFromDob = (dob) => (dob ? Math.floor((Date.now() - new Date(dob)) / 31557600000) : null)
 
 export default function CompanionPage({ data, setData, user, patients, notify }) {
   const patient = patients[0]
@@ -89,7 +92,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const eyes = thermal.status === 'live' || (cctvOn && cctv.status === 'live') ? 'live' : profile.autonomous ? 'unavailable' : 'off'
   const ctx = { conditions: patient.conditions, allergies: patient.allergies }
   const companionName = profile.companionName
-  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name }
+  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name, messages }
 
   const addMessage = useCallback((role, text) => setMessages(m => [...m.slice(-60), { id: uid('m'), role, text }]), [])
   // Language the patient last spoke (or the one chosen in settings); replies are written and voiced in it.
@@ -147,29 +150,65 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   }, [])
 
   const [voiceCheck, setVoiceCheck] = useState(null)
+  const [thinking, setThinking] = useState(false)
+  const [classifierOk, setClassifierOk] = useState(null) // null = not tried yet
+  useEffect(() => { checkClassifier(live.current.profile.classifier).then(r => setClassifierOk(r.ok ? r : false)) }, [])
+  const [llmStatus, setLlmStatus] = useState(null)
+  const llmWarnedRef = useRef(false)
+  const setLlm = useCallback((patch) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, llm: { ...p.llm, ...patch } } } }), [update])
+  const testLlm = async () => { setLlmStatus('testing'); setLlmStatus(await checkGemma(live.current.profile.llm)) }
+
+  /** Asks Gemma for a reply + second opinion. Skipped for emergencies, so nothing slows the safety path. */
+  const consultGemma = useCallback(async (text, analysis, voiceResult) => {
+    const L = live.current
+    const cfg = L.profile.llm
+    // Facts the app knows exactly (queue, time, date, medicines) are answered by the app, not guessed by a model.
+    const knownFacts = ['queue', 'time', 'date', 'medicine', 'medicine-taken'].includes(analysis.intent)
+    if (!cfg.enabled || knownFacts || analysis.level >= LEVEL.urgent || analysis.codes.includes('MH') || voiceResult?.status === 'concerning') return null
+    setThinking(true)
+    const system = buildSystemPrompt({ companion: L.profile.companionName, name: L.name, age: ageFromDob(L.patient.dob), conditions: L.patient.conditions, allergies: L.patient.allergies, medicines: L.meds.map(m => m.name) })
+    const hint = analysis.level > 0 ? `local checks rate this "${['none', 'watch', 'urgent', 'critical'][analysis.level]}"` : ''
+    const result = await askGemma(cfg, { system, history: L.messages, text, hint })
+    setThinking(false)
+    if (!result && !llmWarnedRef.current) { llmWarnedRef.current = true; addMessage('system', 'Gemma did not answer, so I used my built-in replies. Open "Gemma 3 language model" below and press Test connection.') }
+    if (result) llmWarnedRef.current = false
+    return result
+  }, [addMessage])
 
   const processUtterance = useCallback(async (text, heard = null) => {
     const L = live.current
-    const analysis = analyzeUtterance(text, L.ctx)
-    replyLangRef.current = analysis.lang
+    // Ask the fine-tuned model first (resolves null if its service is not running → built-in model is used).
+    const prediction = await classifyRemote(text, L.profile.classifier)
+    setClassifierOk(Boolean(prediction))
+    const localAnalysis = analyzeUtterance(text, { ...L.ctx, prediction })
+    replyLangRef.current = localAnalysis.lang
     // How the voice itself sounded, compared with this patient's usual voice (see voiceAnalysis.js).
     const voiceResult = heard?.features ? assessVoice(heard.features, L.profile.voiceBaseline, text.trim().split(/\s+/).length) : null
     setVoiceCheck(voiceResult)
+    const gemma = await consultGemma(text, localAnalysis, voiceResult)
+    const analysis = mergeLlmAnalysis(localAnalysis, gemma, text)
     if (voiceResult?.status === 'normal') setProfile({ voiceBaseline: updateBaseline(L.profile.voiceBaseline, heard.features, voiceResult.rate) })
     update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, voice: voiceResult?.status || null, at: new Date().toISOString() }].slice(-60) }))
     if (analysis.intent === 'medicine-taken') {
       const target = L.meds.find(m => m.status !== 'taken')
       if (target) setData(d => ({ ...d, medications: d.medications.map(m => (m.id === target.id ? { ...m, status: 'taken' } : m)) }))
     }
-    const assessment = assess({ utterance: text, voice: voiceResult, missedCheckins: 0 })
+    const assessment = assess({ utterance: text, prediction, llm: gemma ? analysis : null, voice: voiceResult, missedCheckins: 0 })
     // A worrying voice alerts the family AND the doctor (and Asha tells the patient she is doing so).
     raise(assessment, { toDoctor: assessment.codes.includes('VC') && assessment.level >= LEVEL.urgent })
     const token = data.tokens.find(t => t.patientId === L.patient.id && t.status === 'waiting')
     const queue = data.queues.find(q => q.id === token?.queueId)
     const ahead = token && queue ? Math.max(0, token.number - queue.serving - 1) : null
     const queueInfo = ahead === null || analysis.lang !== 'en' ? '' : `Your token is CAR-${String(token.number).padStart(3, '0')}. There ${ahead === 1 ? 'is 1 person' : `are ${ahead} people`} ahead of you, about ${ahead * queue.avgMinutes} minutes.`
+    // Gemma writes the reply unless this is an alert-level moment, where the fixed multilingual templates are used.
+    if (gemma && assessment.level < LEVEL.urgent) {
+      const lang = detectLanguage(gemma.reply)
+      replyLangRef.current = lang
+      await say(gemma.reply, lang)
+      return
+    }
     await say(companionReply({ analysis, voice: voiceResult, name: L.name, companion: L.profile.companionName, meds: L.meds, queueInfo, seed: seedRef.current++, now: new Date() }), analysis.lang)
-  }, [update, setProfile, setData, raise, assess, say, data.tokens, data.queues])
+  }, [update, setProfile, setData, raise, assess, say, consultGemma, data.tokens, data.queues])
 
   const handleHeard = useCallback(async (text, heard = null) => {
     lastContactRef.current = Date.now()
@@ -323,10 +362,11 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     <PageTitle eyebrow="AI COMPANION · PATIENT CARE" title={`${companionName} is looking after you.`} text="Your companion talks with you and keeps watch privately: CCTV stays off, a heat sensor watches, and the camera only opens if something looks wrong. Family, doctor and caretaker are alerted when it matters." actions={<button className={`btn ${profile.autonomous ? 'btn-dark' : 'btn-primary'}`} onClick={toggleAi}><Power/> {profile.autonomous ? 'Stop AI care mode' : 'Start AI care mode'}</button>}/>
     <StatusStrip aiOn={profile.autonomous} online={online} thermalStatus={thermal.status} cctvOn={cctvOn} recording={recordingActive} listening={voice.listening} speaking={voice.speaking} level={level}/>
     <div className="cmp-grid">
-      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
+      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} listening={voice.listening} interim={voice.interim} thinking={thinking} canListen={voice.canListen} companionName={companionName}/>
       <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }}/>
       <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
+      <ModelPanel llm={profile.llm} setLlm={setLlm} status={llmStatus} onTest={testLlm} classifier={classifierOk}/>
       <ContactsPanel contacts={profile.contacts} onAdd={addContact} onRemove={removeContact}/>
       <ClipsPanel clips={clips} onDelete={removeClip}/>
       <RelayPanel queue={state.relayQueue} online={online} simulateOffline={simulateOffline} setSimulateOffline={setSimulateOffline} contacts={profile.contacts} onSpeak={say}/>

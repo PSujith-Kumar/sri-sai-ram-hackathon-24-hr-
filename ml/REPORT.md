@@ -1,6 +1,6 @@
 # Mood + situation model report
 
-Training sentences: 7357, held-out (unseen phrasings): 1987, hand-written gold: 102. Vocabulary: 8091 features.
+Training sentences: 7599, held-out (unseen phrasings): 2036, hand-written gold: 102. Vocabulary: 9333 features.
 
 Train/test are split by phrasing and by sentence structure, so the held-out set is *unseen wordings of known situations*. The gold set is
 hand-written and never used for training. The first 46 gold sentences guided one round of error analysis and gold-b (next 20) guided
@@ -11,27 +11,27 @@ accuracy claim. Real patient conversations (with consent) are needed before trus
 
 | head | accuracy | macro-F1 |
 |---|---|---|
-| mood | 0.796 | 0.818 |
-| severity | 0.829 | 0.744 |
+| mood | 0.793 | 0.811 |
+| severity | 0.810 | 0.723 |
 
-- Serious (urgent/critical) recall: **0.730**, critical recall: **0.745**
-- Dangerous misses (serious predicted none/watch): **0.270**, false alarms on calm sentences: **0.074**
+- Serious (urgent/critical) recall: **0.748**, critical recall: **0.734**
+- Dangerous misses (serious predicted none/watch): **0.252**, false alarms on calm sentences: **0.093**
 
 Per-class report, mood:
 ```
               precision    recall  f1-score   support
 
-       angry       0.98      0.95      0.96        96
-     anxious       0.84      0.97      0.90       172
-  distressed       0.81      0.84      0.82       616
-       happy       0.74      0.81      0.77       310
-         low       0.77      0.85      0.81       260
-     neutral       0.73      0.56      0.64       373
-       tired       0.84      0.79      0.82       160
+       angry       0.95      0.92      0.93        99
+     anxious       0.86      0.92      0.89       181
+  distressed       0.80      0.84      0.82       636
+       happy       0.74      0.80      0.77       310
+         low       0.79      0.87      0.83       271
+     neutral       0.74      0.56      0.64       379
+       tired       0.81      0.79      0.80       160
 
-    accuracy                           0.80      1987
-   macro avg       0.82      0.82      0.82      1987
-weighted avg       0.79      0.80      0.79      1987
+    accuracy                           0.79      2036
+   macro avg       0.81      0.81      0.81      2036
+weighted avg       0.79      0.79      0.79      2036
 
 ```
 
@@ -39,14 +39,14 @@ Per-class report, severity:
 ```
               precision    recall  f1-score   support
 
-    critical       0.77      0.75      0.76       322
-        none       0.88      0.91      0.89      1289
-      urgent       0.68      0.64      0.66       189
-       watch       0.73      0.61      0.67       187
+    critical       0.73      0.73      0.73       331
+        none       0.87      0.89      0.88      1307
+      urgent       0.59      0.65      0.62       193
+       watch       0.74      0.59      0.66       205
 
-    accuracy                           0.83      1987
-   macro avg       0.76      0.73      0.74      1987
-weighted avg       0.83      0.83      0.83      1987
+    accuracy                           0.81      2036
+   macro avg       0.74      0.72      0.72      2036
+weighted avg       0.81      0.81      0.81      2036
 
 ```
 
@@ -56,23 +56,23 @@ The companion alerts the family when P(urgent)+P(critical) is at least the thres
 
 | threshold | serious sentences alerted | calm sentences falsely alerted |
 |---|---|---|
-| 0.25 | 0.890 | 0.175 |
-| 0.40 | 0.824 | 0.119 |
-| 0.50 | 0.746 | 0.071 |
-| 0.60 | 0.663 | 0.030 |
-| 0.70 | 0.611 | 0.007 |
-| 0.80 | 0.434 | 0.004 |
-| 0.85 | 0.295 | 0.004 |
+| 0.25 | 0.908 | 0.189 |
+| 0.40 | 0.832 | 0.123 |
+| 0.50 | 0.767 | 0.090 |
+| 0.60 | 0.683 | 0.039 |
+| 0.70 | 0.615 | 0.011 |
+| 0.80 | 0.445 | 0.004 |
+| 0.85 | 0.284 | 0.004 |
 
 ### Gold set (hand-written, exported model)
 
 | head | accuracy | macro-F1 |
 |---|---|---|
-| mood | 0.873 | 0.856 |
-| severity | 0.843 | 0.814 |
+| mood | 0.882 | 0.868 |
+| severity | 0.824 | 0.792 |
 
-- Serious (urgent/critical) recall: **0.879**, critical recall: **0.905**
-- Dangerous misses (serious predicted none/watch): **0.121**, false alarms on calm sentences: **0.077**
+- Serious (urgent/critical) recall: **0.909**, critical recall: **0.857**
+- Dangerous misses (serious predicted none/watch): **0.091**, false alarms on calm sentences: **0.077**
 
 Per-class report, mood:
 ```
@@ -82,13 +82,13 @@ Per-class report, mood:
      anxious       1.00      0.90      0.95        10
   distressed       0.91      0.91      0.91        35
        happy       0.91      0.91      0.91        11
-         low       0.76      0.93      0.84        14
+         low       0.81      0.93      0.87        14
      neutral       0.76      0.87      0.81        15
-       tired       0.89      0.80      0.84        10
+       tired       0.90      0.90      0.90        10
 
-    accuracy                           0.87       102
-   macro avg       0.89      0.84      0.86       102
-weighted avg       0.88      0.87      0.87       102
+    accuracy                           0.88       102
+   macro avg       0.90      0.86      0.87       102
+weighted avg       0.89      0.88      0.88       102
 
 ```
 
@@ -96,14 +96,14 @@ Per-class report, severity:
 ```
               precision    recall  f1-score   support
 
-    critical       0.83      0.90      0.86        21
-        none       0.87      0.88      0.88        52
-      urgent       0.80      0.67      0.73        12
-       watch       0.81      0.76      0.79        17
+    critical       0.78      0.86      0.82        21
+        none       0.88      0.87      0.87        52
+      urgent       0.75      0.75      0.75        12
+       watch       0.75      0.71      0.73        17
 
-    accuracy                           0.84       102
-   macro avg       0.83      0.81      0.81       102
-weighted avg       0.84      0.84      0.84       102
+    accuracy                           0.82       102
+   macro avg       0.79      0.79      0.79       102
+weighted avg       0.82      0.82      0.82       102
 
 ```
 
@@ -155,7 +155,7 @@ weighted avg       0.70      0.70      0.70        20
 | head | accuracy | macro-F1 |
 |---|---|---|
 | mood | 0.750 | 0.703 |
-| severity | 0.750 | 0.584 |
+| severity | 0.750 | 0.567 |
 
 - Serious (urgent/critical) recall: **0.800**, critical recall: **1.000**
 - Dangerous misses (serious predicted none/watch): **0.200**, false alarms on calm sentences: **0.231**
@@ -182,14 +182,14 @@ Per-class report, severity:
 ```
               precision    recall  f1-score   support
 
-    critical       0.50      1.00      0.67         3
+    critical       0.43      1.00      0.60         3
         none       1.00      0.77      0.87        13
       urgent       0.00      0.00      0.00         2
        watch       0.67      1.00      0.80         2
 
     accuracy                           0.75        20
-   macro avg       0.54      0.69      0.58        20
-weighted avg       0.79      0.75      0.75        20
+   macro avg       0.52      0.69      0.57        20
+weighted avg       0.78      0.75      0.74        20
 
 ```
 
@@ -197,11 +197,11 @@ weighted avg       0.79      0.75      0.75        20
 
 | head | accuracy | macro-F1 |
 |---|---|---|
-| mood | 0.938 | 0.932 |
-| severity | 0.875 | 0.687 |
+| mood | 1.000 | 1.000 |
+| severity | 0.812 | 0.727 |
 
-- Serious (urgent/critical) recall: **0.750**, critical recall: **1.000**
-- Dangerous misses (serious predicted none/watch): **0.250**, false alarms on calm sentences: **0.000**
+- Serious (urgent/critical) recall: **1.000**, critical recall: **0.667**
+- Dangerous misses (serious predicted none/watch): **0.000**, false alarms on calm sentences: **0.000**
 
 Per-class report, mood:
 ```
@@ -211,13 +211,13 @@ Per-class report, mood:
      anxious       1.00      1.00      1.00         2
   distressed       1.00      1.00      1.00         4
        happy       1.00      1.00      1.00         2
-         low       0.75      1.00      0.86         3
+         low       1.00      1.00      1.00         3
      neutral       1.00      1.00      1.00         2
-       tired       1.00      0.50      0.67         2
+       tired       1.00      1.00      1.00         2
 
-    accuracy                           0.94        16
-   macro avg       0.96      0.93      0.93        16
-weighted avg       0.95      0.94      0.93        16
+    accuracy                           1.00        16
+   macro avg       1.00      1.00      1.00        16
+weighted avg       1.00      1.00      1.00        16
 
 ```
 
@@ -225,13 +225,13 @@ Per-class report, severity:
 ```
               precision    recall  f1-score   support
 
-    critical       1.00      1.00      1.00         3
-        none       0.80      1.00      0.89         8
-      urgent       0.00      0.00      0.00         1
-       watch       1.00      0.75      0.86         4
+    critical       1.00      0.67      0.80         3
+        none       0.89      1.00      0.94         8
+      urgent       0.33      1.00      0.50         1
+       watch       1.00      0.50      0.67         4
 
-    accuracy                           0.88        16
-   macro avg       0.70      0.69      0.69        16
-weighted avg       0.84      0.88      0.85        16
+    accuracy                           0.81        16
+   macro avg       0.81      0.79      0.73        16
+weighted avg       0.90      0.81      0.82        16
 
 ```

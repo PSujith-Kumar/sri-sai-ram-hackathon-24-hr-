@@ -12,7 +12,7 @@ export const REASON_LABELS = {
   FL: 'a fall', SY: 'concerning symptoms', HP: 'asked for help', PN: 'pain or discomfort', MH: 'emotional crisis',
   AL: 'allergy risk', BP: 'symptoms with known hypertension', NR: 'no response', MD: 'medication not confirmed', IN: 'unusual inactivity',
   FV: 'high body temperature', HZ: 'heat hazard in the room', AB: 'abnormal activity confirmed',
-  ML: 'distress detected by the AI mood model', VC: 'voice sounds weak, shaky or unwell',
+  ML: 'distress detected by the AI mood model', GM: 'distress noticed by the Gemma language model', VC: 'voice sounds weak, shaky or unwell',
 }
 
 const SYMPTOM_RULES = [
@@ -98,8 +98,8 @@ const SERIOUS_MASS = 0.25
 const ALERT_CONFIDENCE = 0.5
 
 /** Trained model's view of the sentence, or null if unavailable. Never overrides the safety rules downward. */
-function modelView(text) {
-  const ml = predictMood(text)
+function modelView(text, prediction = null) {
+  const ml = prediction || predictMood(text) // the fine-tuned model's answer when available, else the built-in one
   if (!ml) return null
   // With no keyword match, only a *confident* model may raise an alert. A moderate score just makes
   // the companion ask a gentle follow-up (watch level), because a false family alert is costly.
@@ -112,7 +112,7 @@ function modelView(text) {
   return { ...ml, level }
 }
 
-export function analyzeUtterance(text = '', { conditions = [], allergies = [] } = {}) {
+export function analyzeUtterance(text = '', { conditions = [], allergies = [], prediction = null } = {}) {
   const hits = SYMPTOM_RULES.filter(r => matchesRule(r, text))
   const codes = hits.map(h => h.code)
   let level = maxLevel(hits.map(h => h.level))
@@ -120,13 +120,32 @@ export function analyzeUtterance(text = '', { conditions = [], allergies = [] } 
   if (hasHypertension && codes.includes('SY')) { codes.push('BP'); level = Math.max(level, LEVEL.urgent) }
   const mentionsAllergen = allergies.some(a => a && new RegExp(`\\b${a}\\b`, 'i').test(text)) && /(take|took|taken|give|gave|given|prescri|inject|eat|ate)/i.test(text)
   if (mentionsAllergen) { codes.push('AL'); level = Math.max(level, LEVEL.urgent) }
-  const ml = modelView(text)
+  const ml = modelView(text, prediction)
   // The model may only escalate on its own when there is something distress-like to go on: a cue word, or a
   // clearly distressed mood reading. Ordinary chit-chat in unfamiliar wording can then never raise an alert.
   const evidence = DISTRESS_CUE.test(text) || (ml && DISTRESS_MOODS.includes(ml.mood) && ml.moodProb >= STRONG_MOOD)
   if (ml && evidence && ml.level > level) { level = ml.level; codes.push('ML') }
   const mood = ml && ml.moodProb >= MOOD_CONFIDENCE ? ml.mood : detectMood(text)
   return { mood, moodConfidence: ml ? ml.moodProb : null, intent: detectIntent(text), lang: detectLanguage(text), level, codes: unique(codes) }
+}
+
+/**
+ * Folds the Gemma language model's opinion into the local analysis. It can only RAISE concern:
+ * 'watch' freely, 'urgent' only when the sentence has a distress cue, never 'critical' on its own.
+ * The mood reading from Gemma replaces the local one when it gave a valid mood.
+ */
+export function mergeLlmAnalysis(analysis, llm, text) {
+  if (!llm) return analysis
+  const wanted = Math.min(LEVEL[llm.severity] ?? 0, LEVEL.urgent)
+  const allowed = wanted <= LEVEL.watch || DISTRESS_CUE.test(text)
+  const raise = allowed && wanted > analysis.level
+  return {
+    ...analysis,
+    mood: llm.mood || analysis.mood,
+    level: raise ? wanted : analysis.level,
+    codes: raise ? unique([...analysis.codes, 'GM']) : analysis.codes,
+    viaLlm: true,
+  }
 }
 
 const toMinutes = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
@@ -145,16 +164,18 @@ export function dueMedications(meds = [], nowMinutes, windowMinutes = 15) {
  * Combine every signal (what the patient said, camera, missed check-ins, medicines, record)
  * into one decision. `camera.status === 'live'` means the AI can see the patient.
  */
-export function assessSituation({ utterance = null, voice = null, camera = {}, thermal = [], confirmed = false, missedCheckins = 0, meds = [], nowMinutes = 0, conditions = [], allergies = [] } = {}) {
+export function assessSituation({ utterance = null, prediction = null, llm = null, voice = null, camera = {}, thermal = [], confirmed = false, missedCheckins = 0, meds = [], nowMinutes = 0, conditions = [], allergies = [] } = {}) {
   const codes = []
   let level = LEVEL.none
   const raise = (code, lvl) => { codes.push(code); level = Math.max(level, lvl) }
 
   if (utterance) {
-    const a = analyzeUtterance(utterance, { conditions, allergies })
+    const a = analyzeUtterance(utterance, { conditions, allergies, prediction })
     a.codes.forEach(c => codes.push(c))
     level = Math.max(level, a.level)
   }
+  // `llm` is an analysis already merged with Gemma's opinion (mergeLlmAnalysis); it can only add to the local result.
+  if (llm && llm.level > level) raise('GM', llm.level)
   // How the voice sounds (see voiceAnalysis.js): unusual alone is a watch; concerning, or unusual with
   // distress in the words, is serious enough to alert family and doctor.
   if (voice?.status === 'concerning') raise('VC', LEVEL.urgent)
