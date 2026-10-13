@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { floorPlans } from '../src/data'
-import { MAP_AI_DEFAULTS, askOpenRouter, buildMapMessages, checkOpenRouter, compareRoutes, parseMapAnalysis, routeBetween, routeFacts } from '../src/mapAnalysis'
+import { FALLBACK_MODELS, MAP_AI_DEFAULTS, askOpenRouter, buildMapMessages, checkOpenRouter, compareRoutes, parseMapAnalysis, routeBetween, routeFacts } from '../src/mapAnalysis'
 
 const plan = floorPlans.h1
 const accessiblePath = ['Entrance', 'Reception', 'Lift', 'Diagnostics', 'Cardiology']
@@ -102,6 +102,11 @@ describe('parseMapAnalysis', () => {
     expect(parseMapAnalysis(hindi, facts).grounded).toBe(true)
   })
 
+  it('finds the answer after a model thinks out loud, even with braces in its reasoning', () => {
+    const noisy = 'Let me think {about} the legs: Entrance, Reception... \n' + good + '\nHope that helps!'
+    expect(parseMapAnalysis(noisy, facts).directions).toHaveLength(4)
+  })
+
   it('rejects unusable output and trims over-long lists', () => {
     expect(parseMapAnalysis('no json', facts)).toBeNull()
     expect(parseMapAnalysis(JSON.stringify({ summary: 'x' }), facts)).toBeNull()
@@ -123,7 +128,10 @@ describe('askOpenRouter', () => {
     expect(url).toBe('/openrouter/v1/chat/completions')
     expect(init.headers.Authorization).toBeUndefined()
     const body = JSON.parse(init.body)
-    expect(body).toMatchObject({ model: 'google/gemma-3-27b-it:free', response_format: { type: 'json_object' } })
+    expect(body.response_format).toEqual({ type: 'json_object' })
+    expect(body.reasoning).toEqual({ effort: 'low' })
+    expect(body.model).toBe(MAP_AI_DEFAULTS.model)               // the chosen model is tried first
+    expect([MAP_AI_DEFAULTS.model, ...FALLBACK_MODELS].every(m => m.endsWith(':free'))).toBe(true) // the defaults never spend money
     expect(body.messages).toHaveLength(2)
   })
 
@@ -137,6 +145,30 @@ describe('askOpenRouter', () => {
     const r = await askOpenRouter(settings, input, facts, vi.fn().mockResolvedValue(reply(status, {})))
     expect(r).toMatchObject({ ok: false, error: code })
     expect(r.message).toMatch(pattern)
+  })
+
+  it('moves on to the next model when one is rate-limited or answers badly, and says which one answered', async () => {
+    const fetchImpl = vi.fn()
+      .mockResolvedValueOnce(reply(429, {}))
+      .mockResolvedValueOnce(completion(''))
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ model: 'nvidia/nemotron-3-super-120b-a12b:free', choices: [{ message: { content: good } }] }) })
+    const r = await askOpenRouter(settings, input, facts, fetchImpl)
+    expect(r.ok).toBe(true)
+    expect(r.analysis.model).toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(fetchImpl.mock.calls.map(([, init]) => JSON.parse(init.body).model)).toEqual([MAP_AI_DEFAULTS.model, ...FALLBACK_MODELS])
+  })
+
+  it('does not hammer other models when the key itself is the problem', async () => {
+    for (const status of [401, 402, 503]) {
+      const fetchImpl = vi.fn().mockResolvedValue(reply(status, {}))
+      await askOpenRouter(settings, input, facts, fetchImpl)
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    }
+  })
+
+  it('reports the last problem when every model fails', async () => {
+    const r = await askOpenRouter(settings, input, facts, vi.fn().mockResolvedValue(reply(429, {})))
+    expect(r).toMatchObject({ ok: false, error: 'rate' })
   })
 
   it('reports a network failure and unusable model output without throwing', async () => {

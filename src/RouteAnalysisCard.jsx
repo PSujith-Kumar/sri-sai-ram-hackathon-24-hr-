@@ -1,14 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Info, ShieldCheck, Sparkles } from 'lucide-react'
 import { Badge } from './ui'
-import { LANGUAGE_PROMPT, MAP_AI_DEFAULTS, askOpenRouter, checkOpenRouter, compareRoutes, routeFacts } from './mapAnalysis'
+import { LANGUAGE_PROMPT, MAP_AI_DEFAULTS, RETIRED_MODELS, askOpenRouter, checkOpenRouter, compareRoutes, routeFacts } from './mapAnalysis'
 
 const SETTINGS_KEY = 'carebridge-map-ai'
 const LANGUAGE_LABEL = { en: 'English', hi: 'हिन्दी (Hindi)', ta: 'தமிழ் (Tamil)' }
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`
 
 const loadSettings = () => {
-  try { return { ...MAP_AI_DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)) } } catch { return MAP_AI_DEFAULTS }
+  try {
+    const saved = { ...MAP_AI_DEFAULTS, ...JSON.parse(localStorage.getItem(SETTINGS_KEY)) }
+    return RETIRED_MODELS.includes(saved.model) ? { ...saved, model: MAP_AI_DEFAULTS.model } : saved // a model OpenRouter withdrew
+  } catch { return MAP_AI_DEFAULTS }
 }
 
 /** Exact route facts (always shown) plus an optional OpenRouter explanation in the patient's language. */
@@ -67,7 +70,7 @@ export default function RouteAnalysisCard({ plan, start, end, accessible, path }
       {result.analysis.cautions.length > 0 && <><p><b>Watch for</b></p><ul>{result.analysis.cautions.map((c, i) => <li key={i}>{c}</li>)}</ul></>}
       {result.analysis.tips.length > 0 && <><p><b>Tips</b></p><ul>{result.analysis.tips.map((t, i) => <li key={i}>{t}</li>)}</ul></>}
       {!result.analysis.grounded && <p className="map-ai-warn"><Info/> This answer does not clearly match the route above. Please follow the steps listed above and ask hospital staff.</p>}
-      <small>AI-written from the verified route data. Always confirm directions with hospital staff.</small>
+      <small>AI-written from the verified route data{result.analysis.model ? ` by ${result.analysis.model}` : ''}. Always confirm directions with hospital staff.</small>
     </div>}
   </div>
 }

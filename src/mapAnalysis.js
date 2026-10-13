@@ -6,7 +6,12 @@
 //
 // The OpenRouter key is never in this code or in the browser: the dev server adds it (see vite.config.js).
 
-export const MAP_AI_DEFAULTS = { enabled: false, model: 'google/gemma-3-27b-it:free', endpoint: '/openrouter', language: 'en' }
+// Free Gemma model on OpenRouter (the free Gemma 3 27B slug was withdrawn). Free models come and go: change it in the card.
+export const MAP_AI_DEFAULTS = { enabled: false, model: 'google/gemma-4-31b-it:free', endpoint: '/openrouter', language: 'en' }
+export const RETIRED_MODELS = ['google/gemma-3-27b-it:free']
+// Free models are often rate-limited, so these are tried in order after the chosen model. All are free.
+// (Not 'openrouter/free': that auto-router can pick any model, even a content-safety classifier.)
+export const FALLBACK_MODELS = ['google/gemma-4-26b-a4b-it:free', 'nvidia/nemotron-3-super-120b-a12b:free']
 export const MAP_AI_TIMEOUT_MS = 45000
 export const LANGUAGE_PROMPT = { en: 'English', hi: 'Hindi (Devanagari script)', ta: 'Tamil (Tamil script)' }
 const MINUTES_PER_STEP = 2 // same estimate the ClinicCompass page shows
@@ -86,7 +91,7 @@ export function buildMapMessages({ plan, facts, accessible, language = 'en', com
     `Write in ${LANGUAGE_PROMPT[language] || LANGUAGE_PROMPT.en}, in short, simple sentences.`,
     'Use ONLY the room names, floors and legs given in the data. Never invent rooms, turns, distances, signs or staff.',
     accessible ? 'The patient needs a wheelchair-friendly route: do not suggest stairs.' : 'Mention stairs or lifts when the route uses them.',
-    'Answer ONLY with JSON: {"summary": one sentence, "directions": array with one short instruction per leg in order, "accessibility": one or two sentences on how easy the route is, "cautions": array of up to 3 short things to watch for, "tips": array of up to 3 practical tips}.',
+    'Output ONLY the JSON object: no reasoning, no explanation before or after it. Format: {"summary": one sentence, "directions": array with one short instruction per leg in order, "accessibility": one or two sentences on how easy the route is, "cautions": array of up to 3 short things to watch for, "tips": array of up to 3 practical tips}.',
     'Do not give medical advice. End the tips with a reminder to confirm directions with hospital staff.',
   ].join('\n')
   const data = {
@@ -103,6 +108,19 @@ export function buildMapMessages({ plan, facts, accessible, language = 'en', com
 // Hindi / Tamil answers translate room names, so they cannot be matched against the English names.
 const isIndicScript = (text) => /[ऀ-ॿ஀-௿]/.test(text)
 
+/** The first valid JSON object that has a "summary", even when the model wraps it in prose, fences or reasoning. */
+function extractJson(content) {
+  try { const whole = JSON.parse(content); if (whole && typeof whole === 'object') return whole } catch { /* fall through to scanning */ }
+  const last = content.lastIndexOf('}')
+  for (let i = content.indexOf('{'); i !== -1 && i < last; i = content.indexOf('{', i + 1)) {
+    try {
+      const candidate = JSON.parse(content.slice(i, last + 1))
+      if (candidate && typeof candidate.summary === 'string') return candidate
+    } catch { /* try the next opening brace */ }
+  }
+  return null
+}
+
 const asStringList = (value, max) => (Array.isArray(value) ? value.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim().slice(0, 300)).slice(0, max) : [])
 
 /**
@@ -111,11 +129,7 @@ const asStringList = (value, max) => (Array.isArray(value) ? value.filter(x => t
  */
 export function parseMapAnalysis(content, facts) {
   if (typeof content !== 'string') return null
-  let data = null
-  try { data = JSON.parse(content) } catch {
-    const match = content.match(/\{[\s\S]*\}/) // models sometimes wrap JSON in prose or code fences
-    if (match) { try { data = JSON.parse(match[0]) } catch { data = null } }
-  }
+  const data = extractJson(content)
   if (!data || typeof data.summary !== 'string') return null
   const directions = asStringList(data.directions, 20)
   if (!directions.length) return null
@@ -140,8 +154,8 @@ const ERROR_TEXT = {
   'bad-output': 'The model answered, but not in a usable format. Try again or choose another model.',
 }
 
-/** Asks OpenRouter for the explanation. Resolves { ok: true, analysis } or { ok: false, error, message }. */
-export async function askOpenRouter(settings, input, facts, fetchImpl = fetch) {
+/** One attempt with one model. Resolves { ok: true, analysis } or { ok: false, error, message }. */
+async function attempt(settings, model, input, facts, fetchImpl) {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), MAP_AI_TIMEOUT_MS)
   const fail = (error) => ({ ok: false, error, message: ERROR_TEXT[error] })
@@ -151,11 +165,12 @@ export async function askOpenRouter(settings, input, facts, fetchImpl = fetch) {
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        model: settings.model,
+        model,
         messages: buildMapMessages(input),
         response_format: { type: 'json_object' },
         temperature: 0.3,
-        max_tokens: 700,
+        reasoning: { effort: 'low' }, // thinking models otherwise spend the whole allowance reasoning and answer nothing
+        max_tokens: 2000,
       }),
     })
     if (res.status === 503) return fail('no-key')
@@ -165,12 +180,28 @@ export async function askOpenRouter(settings, input, facts, fetchImpl = fetch) {
     if (!res.ok) return fail('unavailable')
     const body = await res.json()
     const analysis = parseMapAnalysis(body?.choices?.[0]?.message?.content, facts)
-    return analysis ? { ok: true, analysis } : fail('bad-output')
+    return analysis ? { ok: true, analysis: { ...analysis, model: body.model || model } } : fail('bad-output')
   } catch {
     return fail('unavailable')
   } finally {
     clearTimeout(timer)
   }
+}
+
+// Problems that trying another model cannot fix
+const STOP_ON = ['no-key', 'auth', 'credits']
+
+/**
+ * Asks OpenRouter for the explanation. Tries the chosen model, then each fallback, moving on when a model is
+ * rate-limited, down or answers unusably (free models often are). Resolves { ok, analysis | error, message }.
+ */
+export async function askOpenRouter(settings, input, facts, fetchImpl = fetch) {
+  let last = null
+  for (const model of [...new Set([settings.model, ...FALLBACK_MODELS])]) {
+    last = await attempt(settings, model, input, facts, fetchImpl)
+    if (last.ok || STOP_ON.includes(last.error)) return last
+  }
+  return last
 }
 
 /** Is a key configured on the server, and is the chosen model listed? Used by the status line. */
