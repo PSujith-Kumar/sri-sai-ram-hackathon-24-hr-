@@ -95,7 +95,7 @@ export function ClipsPanel({ clips, onDelete }) {
   return <Card className="cmp-clips">
     <div className="card-head"><div><p className="eyebrow">STORED ON THIS DEVICE ONLY</p><h2>Incident clips</h2></div><Badge tone="neutral"><Lock/> Never uploaded</Badge></div>
     {clips.length === 0 ? <p className="cmp-hint">No clips. Nothing is recorded unless an abnormal event is confirmed. Clips are deleted after 7 days.</p>
-      : <ul className="cmp-contact-list">{clips.map(c => <li key={c.id}><span><b>{c.reasons.join(', ')}</b><small>{new Date(c.at).toLocaleString('en-IN')}</small></span><span className="cmp-actions"><button className="btn btn-secondary" type="button" onClick={() => setOpenId(openId === c.id ? null : c.id)}>{openId === c.id ? 'Hide' : 'Play'}</button><button className="icon-btn" type="button" aria-label="Delete clip" onClick={() => onDelete(c.id)}><Trash2/></button></span></li>)}</ul>}
+      : <ul className="cmp-contact-list">{clips.map(c => <li key={c.id}><span><b>{(c.reasons || []).join(', ') || 'Safety event'}</b><small>{new Date(c.at).toLocaleString('en-IN')}</small></span><span className="cmp-actions"><button className="btn btn-secondary" type="button" onClick={() => setOpenId(openId === c.id ? null : c.id)}>{openId === c.id ? 'Hide' : 'Play'}</button><button className="icon-btn" type="button" aria-label="Delete clip" onClick={() => onDelete(c.id)}><Trash2/></button></span></li>)}</ul>}
     {url && <video src={url} controls className="cmp-clip-video"/>}
   </Card>
 }

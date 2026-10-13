@@ -50,6 +50,31 @@ describe('connected health records', () => {
     const stored = { users: [{ id: 'u-family', name: 'Ravi Kumar' }], records: [], queues: [] }
     expect(hydrateCareData(stored, seed).users[0]).toMatchObject({ name: 'Ravi Kumar', phone: '+919800000101' })
   })
+
+  it('repairs legacy saved data before role dashboards render it', () => {
+    const seed = {
+      users: [{ id: 'u-doctor', name: 'Dr Test', hospitalIds: ['h1'] }],
+      patients: [{ id: 'p1', doctorIds: ['u-doctor'], allergies: ['Penicillin'], conditions: ['Monitoring'], familyLinks: [{ userId: 'u-family', permissions: ['records'] }] }],
+      records: [], queues: [], notifications: [], medications: [],
+      hospitalAlerts: [{ id: 'alert-1', reasons: ['follow-up needed'] }],
+      companion: { p1: { events: [], relayQueue: [], moods: [], memory: [], learning: {} } },
+    }
+    const stored = {
+      users: [{ id: 'u-doctor', name: 'Dr Legacy' }],
+      patients: [{ id: 'p1', familyLinks: [{ userId: 'u-family' }] }],
+      records: [], queues: [], notifications: [{ id: 'n1' }], medications: [],
+      hospitalAlerts: [{ id: 'alert-1' }],
+      companion: { p1: { events: [{ id: 'e1' }], relayQueue: [{ id: 'q1' }] } },
+    }
+    const hydrated = hydrateCareData(stored, seed)
+    expect(hydrated.users[0].hospitalIds).toEqual(['h1'])
+    expect(hydrated.patients[0]).toMatchObject({ doctorIds: ['u-doctor'], allergies: ['Penicillin'], conditions: ['Monitoring'] })
+    expect(hydrated.patients[0].familyLinks[0].permissions).toEqual(['records'])
+    expect(hydrated.notifications[0]).toMatchObject({ recipientIds: [], readBy: [] })
+    expect(hydrated.hospitalAlerts[0].reasons).toEqual(['follow-up needed'])
+    expect(hydrated.companion.p1.events[0].reasons).toEqual([])
+    expect(hydrated.companion.p1.relayQueue[0].reasons).toEqual([])
+  })
 })
 
 describe('connected notifications and queues', () => {
