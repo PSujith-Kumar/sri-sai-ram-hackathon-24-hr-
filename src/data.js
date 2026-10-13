@@ -28,17 +28,17 @@ export const seedData = {
     { id: 'p2', userId: 'u-priya', hospitalId: 'h1', mrn: 'SMH-20496', dob: '1998-11-02', bloodGroup: 'O+', doctorIds: ['u-arjun'], familyLinks: [], allergies: [], conditions: ['Knee rehabilitation'] },
   ],
   queues: [
-    { id: 'q1', hospitalId: 'h1', departmentId: 'd-card', doctorId: 'u-meera', serving: 20, lastIssued: 28, avgMinutes: 5, paused: false },
-    { id: 'q2', hospitalId: 'h1', departmentId: 'd-ortho', doctorId: 'u-arjun', serving: 8, lastIssued: 14, avgMinutes: 7, paused: false },
+    { id: 'q1', hospitalId: 'h1', departmentId: 'd-card', doctorId: 'u-meera', serving: 20, lastIssued: 28, avgMinutes: 5, paused: false, updatedAt: '2026-10-13T15:55:00.000Z' },
+    { id: 'q2', hospitalId: 'h1', departmentId: 'd-ortho', doctorId: 'u-arjun', serving: 8, lastIssued: 14, avgMinutes: 7, paused: false, updatedAt: '2026-10-13T15:52:00.000Z' },
   ],
   tokens: [
     { id: 't1', queueId: 'q1', patientId: 'p1', number: 25, status: 'waiting', createdAt: '2026-10-13T12:10:00.000Z' },
     { id: 't2', queueId: 'q2', patientId: 'p2', number: 12, status: 'waiting', createdAt: '2026-10-13T12:20:00.000Z' },
   ],
   records: [
-    { id: 'r1', patientId: 'p1', title: 'Complete blood count', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Lab report', date: '2026-10-08', sharedWithFamily: true },
-    { id: 'r2', patientId: 'p1', title: 'Cardiology prescription', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Prescription', date: '2026-09-28', sharedWithFamily: true },
-    { id: 'r3', patientId: 'p2', title: 'Knee X-ray', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Scan', date: '2026-10-03', sharedWithFamily: false },
+    { id: 'r1', patientId: 'p1', title: 'Complete blood count', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Lab report', date: '2026-10-08', description: 'Routine blood count completed during the cardiology follow-up. Haemoglobin, white-cell count and platelets were recorded within the expected reference range for this fictional demonstration.', summary: 'Routine blood count results were within the expected demonstration range.', sharedWithFamily: true, createdBy: 'u-ananya' },
+    { id: 'r2', patientId: 'p1', title: 'Cardiology prescription', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Prescription', date: '2026-09-28', description: 'Medication instructions recorded after the cardiology consultation. Continue only the medicines and timings shown in the existing prescription; CareBridge does not alter doses.', summary: 'Existing cardiology medication instructions and timings.', sharedWithFamily: true, createdBy: 'u-ananya' },
+    { id: 'r3', patientId: 'p2', title: 'Knee X-ray', hospital: 'Sanjeevani Multispeciality Hospital', type: 'Scan', date: '2026-10-03', description: 'Knee X-ray captured for the rehabilitation review. The report remains private to the patient and assigned care team.', summary: 'Knee imaging saved for rehabilitation follow-up.', sharedWithFamily: false, createdBy: 'u-priya' },
   ],
   medications: [
     { id: 'm1', patientId: 'p1', name: 'Atorvastatin', instruction: '1 tablet', time: '20:00', note: 'After dinner', status: 'unconfirmed' },
@@ -51,6 +51,11 @@ export const seedData = {
   appointments: [
     { id: 'a1', patientId: 'p1', doctorId: 'u-meera', hospitalId: 'h1', departmentId: 'd-card', date: '2026-10-13', time: '16:30', status: 'checked-in' },
     { id: 'a2', patientId: 'p2', doctorId: 'u-arjun', hospitalId: 'h1', departmentId: 'd-ortho', date: '2026-10-14', time: '10:00', status: 'scheduled' },
+  ],
+  notifications: [
+    { id: 'n-seed-1', message: 'Complete blood count was shared with your family caregiver.', recipientIds: ['u-ananya'], page: 'records', type: 'record', createdAt: '2026-10-13T15:48:00.000Z', readBy: [] },
+    { id: 'n-seed-2', message: 'Ananya shared a health report with you.', recipientIds: ['u-ravi'], page: 'records', type: 'record', createdAt: '2026-10-13T15:48:00.000Z', readBy: [] },
+    { id: 'n-seed-3', message: 'Cardiology queue is live and currently serving CAR-020.', recipientIds: ['u-ananya', 'u-ravi'], page: 'queue', type: 'queue', createdAt: '2026-10-13T15:55:00.000Z', readBy: [] },
   ],
 }
 
