@@ -89,6 +89,7 @@ export function hydrateCareData(stored, seed) {
   return {
     ...seed,
     ...source,
+    users: (source.users || seed.users || []).map(user => ({ ...(seed.users || []).find(seedUser => seedUser.id === user.id), ...user })),
     records: (source.records || seed.records || []).map(record => {
       const description = clean(record.description) || `${record.type} issued by ${record.hospital}. Open the report to review the saved details.`
       const legacyDate = record.date ? new Date(`${record.date}T12:00:00.000Z`) : new Date(0)

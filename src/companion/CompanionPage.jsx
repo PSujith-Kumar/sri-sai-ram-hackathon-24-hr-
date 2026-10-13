@@ -6,25 +6,23 @@ import { ConversationPanel, RelayPanel, StatusStrip, UnderstandingPanel, VoicePa
 import { ClipsPanel, ContactsPanel, PrivacyPanel } from './PrivacyPanels'
 import { deleteClip, listClips, saveClip } from './incidentStore'
 import { GUARD_MODE, initialGuard, stepGuard } from './privacy'
-import { enqueue, isMobileDevice, makeRelayItem, markSent, pending, ussdDialHref } from './ussd'
+import { enqueue, makeRelayItem, markSent, pending } from './ussd'
 import { SAMPLE_WORDS, explainSpeechError, loadVoiceSample, useVoice } from './useVoice'
 import { assessVoice, updateBaseline } from './voiceAnalysis'
 import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
 import { loadMoodModel } from './mood'
+import { EMPTY_COMPANION, mergeProfile } from './config'
+import { appendConversationMemory, avoidRepeatedResponse, conversationSignals, pruneConversationMemory } from './memory'
+import { recoveryReply } from './trainingData'
 
-const DEFAULT_PROFILE = {
-  voiceURI: '', rate: 1, pitch: 1, lang: 'auto', companionName: 'Asha', autonomous: false, checkInSeconds: 60, voiceBaseline: null,
-  thermal: { kind: 'sim', url: '', cctvKind: 'webcam', cctvUrl: '' }, contacts: [],
-}
-const EMPTY = { profile: DEFAULT_PROFILE, moods: [], events: [], relayQueue: [] }
+const EMPTY = EMPTY_COMPANION
 const ALERT_COOLDOWN_MS = 60000
 const nowMinutes = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes() }
 const uid = (p) => `${p}${Date.now()}${Math.floor(Math.random() * 1000)}`
 const toThermalTokens = (reasons) => reasons.map(r => (r === 'inactive' ? 'no-motion' : r))
 const THERMAL_WORDS = { 'possible-fall': 'a possible fall', fever: 'a high body temperature', 'heat-hazard': 'a heat hazard', 'no-motion': 'no movement for a long time' }
-const mergeProfile = (p = {}) => ({ ...DEFAULT_PROFILE, ...p, thermal: { ...DEFAULT_PROFILE.thermal, ...p.thermal }, contacts: p.contacts || [] })
 
 export default function CompanionPage({ data, setData, user, patients, notify }) {
   const patient = patients[0]
@@ -39,9 +37,12 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const meds = useMemo(() => data.medications.filter(m => m.patientId === patient.id), [data.medications, patient.id])
   const records = useMemo(() => data.records.filter(r => r.patientId === patient.id), [data.records, patient.id])
   const hospital = data.hospitals.find(h => h.id === patient.hospitalId)
+  const linkedContacts = patient.familyLinks.filter(link => link.status === 'approved').map(link => data.users.find(person => person.id === link.userId)).filter(person => person?.phone).map(person => ({ id: person.id, name: person.name, phone: person.phone, role: 'family' }))
+  const careContacts = [...linkedContacts, ...profile.contacts]
 
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(() => profile.memoryEnabled ? pruneConversationMemory(state.memory, Date.now(), profile.memoryDays) : [])
   const [cctvOn, setCctvOn] = useState(false)
+  const [safetySensorsActive, setSafetySensorsActive] = useState(false)
   const [guard, setGuard] = useState(initialGuard)
   const [scenario, setScenario] = useState('normal')
   const [sensorLoss, setSensorLoss] = useState(false)
@@ -81,21 +82,38 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     onEvent: (e) => { cctvEventsRef.current.push(e); live.current.onCameraEvent?.(e) },
   })
   const thermal = useThermal({
-    source: profile.thermal, enabled: profile.autonomous, scenario, forceUnavailable: sensorLoss,
+    source: profile.thermal, enabled: profile.autonomous && profile.sensorEscalationConsent && safetySensorsActive, scenario, forceUnavailable: sensorLoss,
     onUpdate: ({ active }) => { thermalActiveRef.current = active },
   })
 
   // "Eyes" = can the AI currently see the patient (thermal, or CCTV while it is on)? If not, it uses voice.
   const eyes = thermal.status === 'live' || (cctvOn && cctv.status === 'live') ? 'live' : profile.autonomous ? 'unavailable' : 'off'
-  const ctx = { conditions: patient.conditions, allergies: patient.allergies }
+  const ctx = profile.useRecordContext ? { conditions: patient.conditions, allergies: patient.allergies } : { conditions: [], allergies: [] }
   const companionName = profile.companionName
-  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name }
+  live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name, messages, careContacts }
 
-  const addMessage = useCallback((role, text) => setMessages(m => [...m.slice(-60), { id: uid('m'), role, text }]), [])
+  const addMessage = useCallback((role, text, extra = {}) => {
+    const message = { id: uid('m'), role, text, createdAt: new Date().toISOString(), ...extra }
+    setMessages(current => [...current.slice(-120), message])
+    update(companion => {
+      const p = mergeProfile(companion.profile)
+      return p.memoryEnabled ? { ...companion, memory: appendConversationMemory(companion.memory, message, Date.now(), p.memoryDays) } : companion
+    })
+    return message
+  }, [update])
   // Language the patient last spoke (or the one chosen in settings); replies are written and voiced in it.
   const replyLangRef = useRef(profile.lang === 'auto' ? 'en' : profile.lang.slice(0, 2))
   const seedRef = useRef(0)
-  const say = useCallback(async (text, lang = replyLangRef.current) => { addMessage('ai', text); await voice.speak(text, lang) }, [addMessage, voice])
+  const say = useCallback(async (text, lang = replyLangRef.current) => {
+    const L = live.current
+    const finalText = L.profile.avoidRepetition ? avoidRepeatedResponse(text, L.messages, [
+      'Let me answer differently. What would feel most useful right now: a short answer, reassurance, or contacting someone?',
+      'I do not want to repeat myself. Tell me the single next step you want help with.',
+      'We can pause and try a new approach. I am listening.',
+    ]) : text
+    addMessage('ai', finalText)
+    await voice.speak(finalText, lang)
+  }, [addMessage, voice])
   live.current.onMicProblem = (code, lang) => { const help = explainSpeechError(code, lang); if (help) addMessage('system', help) }
   const refreshClips = useCallback(() => listClips().then(setClips), [])
   useEffect(() => { refreshClips() }, [refreshClips])
@@ -120,10 +138,9 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       addMessage('system', `Alerted: ${who}. Use the "Text" buttons in the relay panel to send the briefing to contacts' phones.`)
     } else {
       update(c => ({ ...c, relayQueue: enqueue(c.relayQueue, item) }))
-      notify('No internet: dialling the offline USSD relay')
-      addMessage('system', `No internet. USSD ${item.ussd} is ready${isMobileDevice() ? ' and the dialler is opening. Tap Call' : '. Dial it from a phone, or use SMS'}. The same alert is queued and sends itself when the connection returns.`)
+      notify('No internet: emergency briefing prepared')
+      addMessage('system', `No internet. The fictional hospital relay ${item.ussd} and an SMS briefing are ready. For a real emergency, tap Call 112. Nothing is dialled silently.`)
       say(item.briefing)
-      if (isMobileDevice()) window.location.href = ussdDialHref(item.ussd)
     }
   }, [hospital, setData, update, notify, addMessage, say])
 
@@ -136,10 +153,16 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     const at = new Date()
     const L = live.current
     update(c => ({ ...c, events: [{ id: uid('e'), at: at.toISOString(), level: assessment.level, codes: assessment.codes, reasons: assessment.reasons }, ...c.events].slice(0, 100) }))
-    setData(d => ({ ...d, careRequests: [{ id: uid('c'), patientId: L.patient.id, text: `AI alert: ${L.name} — ${assessment.reasons.join(', ')}`, priority: 'high', status: 'waiting', createdAt: at.toISOString(), source: 'ai-companion' }, ...d.careRequests] }))
-    addMessage('system', `Family alerted: ${assessment.reasons.join(', ')}.`)
-    if (assessment.actions.notifyHospital || toDoctor) relayToHospital(assessment, at)
-  }, [update, setData, addMessage, relayToHospital])
+    if (L.profile.caregiverEscalationConsent) {
+      const approvedFamily = L.patient.familyLinks.filter(link => link.status === 'approved').map(link => link.userId)
+      const recipients = [...new Set([...approvedFamily, ...L.patient.doctorIds])]
+      setData(d => ({ ...d, careRequests: [{ id: uid('c'), patientId: L.patient.id, text: `AI alert: ${L.name} — ${assessment.reasons.join(', ')}`, priority: 'high', status: 'waiting', createdAt: at.toISOString(), source: 'ai-companion' }, ...d.careRequests] }))
+      notify(`Urgent alert sent to the approved care circle: ${assessment.reasons.join(', ')}`, { recipientIds: recipients, page: 'care', type: 'emergency' })
+      const favourite = L.careContacts.find(contact => contact.id === L.profile.favouriteContactId) || L.careContacts[0]
+      addMessage('system', `${favourite ? `${favourite.name} is your favourite contact. ` : ''}Your approved care circle has an in-app alert. Use the call buttons below for a real phone call.`)
+    } else addMessage('system', 'An urgent wellbeing signal was detected, but care-circle alerts are disabled in Settings. Use the emergency buttons below if help is needed.')
+    if ((assessment.actions.notifyHospital || toDoctor) && L.profile.caregiverEscalationConsent) relayToHospital(assessment, at)
+  }, [update, setData, addMessage, relayToHospital, notify])
 
   const assess = useCallback((extra = {}) => {
     const L = live.current
@@ -168,7 +191,8 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     const queue = data.queues.find(q => q.id === token?.queueId)
     const ahead = token && queue ? Math.max(0, token.number - queue.serving - 1) : null
     const queueInfo = ahead === null || analysis.lang !== 'en' ? '' : `Your token is CAR-${String(token.number).padStart(3, '0')}. There ${ahead === 1 ? 'is 1 person' : `are ${ahead} people`} ahead of you, about ${ahead * queue.avgMinutes} minutes.`
-    await say(companionReply({ analysis, voice: voiceResult, name: L.name, companion: L.profile.companionName, meds: L.meds, queueInfo, seed: seedRef.current++, now: new Date() }), analysis.lang)
+    const correction = /\b(repeat|repeating|same thing again)\b/i.test(text) ? 'repetitive' : /\b(your reply|you are|you'?re).{0,35}\b(angry|annoyed|frustrated)\b/i.test(text) ? 'anger' : null
+    await say(correction ? recoveryReply(correction) : companionReply({ analysis, voice: voiceResult, name: L.name, companion: L.profile.companionName, meds: L.meds, queueInfo, seed: seedRef.current++, now: new Date() }), analysis.lang)
   }, [update, setProfile, setData, raise, assess, say, data.tokens, data.queues])
 
   const handleHeard = useCallback(async (text, heard = null) => {
@@ -177,10 +201,24 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     missedRef.current = 0
     fallRef.current = false
     inactiveRef.current = false
+    if (guardRef.current.mode === GUARD_MODE.thermal) setSafetySensorsActive(false)
     typedRef.current = text
     addMessage('patient', text)
     await processUtterance(text, heard)
   }, [addMessage, processUtterance])
+
+  const handleFeedback = useCallback(async (messageId, reason) => {
+    update(companion => ({
+      ...companion,
+      memory: companion.memory.map(message => message.id === messageId ? { ...message, feedback: reason } : message),
+      learning: { ...EMPTY.learning, ...companion.learning, [reason]: (companion.learning?.[reason] || 0) + 1, corrected: (companion.learning?.corrected || 0) + (reason === 'helpful' ? 0 : 1) },
+    }))
+    setMessages(current => current.map(message => message.id === messageId ? { ...message, feedback: reason } : message))
+    if (reason === 'helpful') { notify('Thanks — this response style will be preferred'); return }
+    const better = recoveryReply(reason)
+    addMessage('system', 'Feedback saved. A safer reply is being replayed now.')
+    await say(better)
+  }, [update, notify, addMessage, say])
 
   const runCheckIn = useCallback(async () => {
     if (busyRef.current) return
@@ -195,6 +233,10 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       missedRef.current += 1
       lastContactRef.current = Date.now()
       addMessage('system', `No reply to check-in (${missedRef.current}).`)
+      if (L.profile.sensorEscalationConsent) {
+        setSafetySensorsActive(true)
+        addMessage('system', 'The unanswered check-in activated the thermal safety sensor. CCTV remains off unless the thermal check finds an abnormal event.')
+      }
       raise(assess(), { toDoctor: guardRef.current.mode === GUARD_MODE.recording })
     } finally {
       busyRef.current = false
@@ -234,7 +276,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
 
   // Privacy guard tick: decides when CCTV may turn on and when anything may be recorded.
   useEffect(() => {
-    if (!profile.autonomous) return undefined
+    if (!profile.autonomous || !profile.sensorEscalationConsent || !safetySensorsActive) return undefined
     const timer = setInterval(async () => {
       const current = guardRef.current
       const cctvEvents = cctvEventsRef.current.splice(0)
@@ -244,16 +286,17 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       for (const effect of effects) await applyEffect(effect, next.reasons.length ? next.reasons : current.reasons)
     }, 1000)
     return () => clearInterval(timer)
-  }, [profile.autonomous, applyEffect])
+  }, [profile.autonomous, profile.sensorEscalationConsent, safetySensorsActive, applyEffect])
 
   // Turning AI care mode off must leave nothing running.
   useEffect(() => {
-    if (profile.autonomous) return
+    if (profile.autonomous && profile.sensorEscalationConsent && safetySensorsActive) return
     guardRef.current = initialGuard()
     setGuard(guardRef.current)
     setCctvOn(false)
+    setSafetySensorsActive(false)
     thermalActiveRef.current = []
-  }, [profile.autonomous])
+  }, [profile.autonomous, profile.sensorEscalationConsent, safetySensorsActive])
 
   // Autonomous loop: medicine reminders, and voice check-ins whenever nothing can see the patient.
   useEffect(() => {
@@ -292,7 +335,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     if (!turningOn && guardRef.current.mode === GUARD_MODE.recording) await applyEffect('stop-recording', guardRef.current.reasons)
     setProfile({ autonomous: turningOn })
     lastContactRef.current = Date.now()
-    if (turningOn) await say(`Hello ${user.name.split(' ')[0]}, I'm ${companionName}. I'll be right here with you. The camera stays off for your privacy, and I only look if my heat sensor notices something unusual. I'll also look after your medicines. Just talk to me any time.`)
+    if (turningOn) await say(`Hello ${user.name.split(' ')[0]}, I'm ${companionName}. I'll be right here with you. ${profile.sensorEscalationConsent ? 'Your safety sensors stay off unless you do not answer a check-in; then thermal may start, while CCTV still needs an unusual thermal event.' : 'Your camera and thermal sensor stay off; I will use voice check-ins unless you change consent in Settings.'} I'll also look after your medicines. Just talk to me any time.`)
   }
 
   const onMic = async () => {
@@ -317,19 +360,20 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const removeClip = async (id) => { await deleteClip(id); refreshClips() }
 
   const snapshot = buildSnapshot({ patient, records, meds, moods: state.moods, events: state.events })
+  const signals = conversationSignals(messages)
   const eyesText = guard.mode === GUARD_MODE.thermal ? (eyes === 'live' ? 'thermal sensor only (CCTV off)' : 'not available, using voice') : 'thermal sensor and CCTV (live check)'
 
   return <>
-    <PageTitle eyebrow="AI COMPANION · PATIENT CARE" title={`${companionName} is looking after you.`} text="Your companion talks with you and keeps watch privately: CCTV stays off, a heat sensor watches, and the camera only opens if something looks wrong. Family, doctor and caretaker are alerted when it matters." actions={<button className={`btn ${profile.autonomous ? 'btn-dark' : 'btn-primary'}`} onClick={toggleAi}><Power/> {profile.autonomous ? 'Stop AI care mode' : 'Start AI care mode'}</button>}/>
+    <PageTitle eyebrow="AI COMPANION · PATIENT CARE" title={`${companionName} is here with you.`} text="A patient-specific companion with 30-day memory, feedback-based reply repair and consent-controlled safety escalation. Wellbeing signals support care; they never diagnose." actions={<button className={`btn ${profile.autonomous ? 'btn-dark' : 'btn-primary'}`} onClick={toggleAi}><Power/> {profile.autonomous ? 'Stop AI care mode' : 'Start AI care mode'}</button>}/>
     <StatusStrip aiOn={profile.autonomous} online={online} thermalStatus={thermal.status} cctvOn={cctvOn} recording={recordingActive} listening={voice.listening} speaking={voice.speaking} level={level}/>
     <div className="cmp-grid">
-      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
+      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} onFeedback={handleFeedback} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
       <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }}/>
-      <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline}/>
+      <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline} signals={signals}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
       <ContactsPanel contacts={profile.contacts} onAdd={addContact} onRemove={removeContact}/>
       <ClipsPanel clips={clips} onDelete={removeClip}/>
-      <RelayPanel queue={state.relayQueue} online={online} simulateOffline={simulateOffline} setSimulateOffline={setSimulateOffline} contacts={profile.contacts} onSpeak={say}/>
+      <RelayPanel queue={state.relayQueue} online={online} simulateOffline={simulateOffline} setSimulateOffline={setSimulateOffline} contacts={careContacts} favouriteContactId={profile.favouriteContactId} patient={patient} patientName={user.name} hospitalName={hospital?.name} meds={meds} onSpeak={say}/>
     </div>
   </>
 }

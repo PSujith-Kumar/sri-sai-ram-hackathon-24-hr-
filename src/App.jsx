@@ -3,11 +3,12 @@ import {
   Activity, ArrowLeft, ArrowRight, Bell, Building2, CalendarDays, Check, ChevronDown, CircleUserRound,
   ClipboardList, Clock3, Database, FileHeart, FileText, HeartHandshake, Hospital, KeyRound, LayoutDashboard,
   LockKeyhole, LogOut, Map, Menu, Network, Pill, Plus, Printer, Route, Search, ShieldCheck, Stethoscope,
-  Sparkles, Trash2, UserCog, UserRoundCheck, UsersRound, X, Zap,
+  Settings2, Sparkles, Trash2, UserCog, UserRoundCheck, UsersRound, X, Zap,
 } from 'lucide-react'
 import { DEMO_PASSWORD, demoAccounts, floorPlans, roleLabels, seedData } from './data'
 import { Badge, Card, Empty, PageTitle } from './ui'
 import CompanionPage from './companion/CompanionPage'
+import CompanionSettingsPage from './companion/CompanionSettings'
 import { addNotification, createHealthRecord, filterHealthRecords, healthRecordDeletionPolicy, hydrateCareData, queueRecipientIds } from './careFlow'
 
 const DATA_KEY = 'carebridge-react-v3'
@@ -116,7 +117,7 @@ const navByRole = {
   dean: [['dashboard','Hospital overview',LayoutDashboard],['organization','Organization',Network],['people','Staff & patients',UsersRound],['queue','Queue operations',Clock3],['careclue','ClinicCompass maps',Map]],
   head: [['dashboard','Department overview',LayoutDashboard],['patients','My patients',CircleUserRound],['queue','Queue desk',Clock3],['organization','Care team',Network],['careclue','ClinicCompass',Map]],
   doctor: [['dashboard','Clinical dashboard',LayoutDashboard],['patients','My patients',CircleUserRound],['queue','Queue desk',Clock3],['appointments','Appointments',CalendarDays],['careclue','ClinicCompass',Map]],
-  patient: [['dashboard','My home',LayoutDashboard],['companion','AI Companion',Sparkles],['team','My care team',UsersRound],['queue','QueueCare',Clock3],['careclue','ClinicCompass',Map],['records','HealthStory',FileHeart],['medications','MedMinder',Pill],['care','CareCircle',HeartHandshake]],
+  patient: [['dashboard','My home',LayoutDashboard],['companion','AI Companion',Sparkles],['settings','AI & privacy settings',Settings2],['team','My care team',UsersRound],['queue','QueueCare',Clock3],['careclue','ClinicCompass',Map],['records','HealthStory',FileHeart],['medications','MedMinder',Pill],['care','CareCircle',HeartHandshake]],
   family: [['dashboard','Family home',LayoutDashboard],['patient','Linked patient',CircleUserRound],['queue','QueueCare',Clock3],['medications','MedMinder',Pill],['care','CareCircle',HeartHandshake],['records','Shared records',FileHeart]],
 }
 
@@ -182,6 +183,7 @@ function AppShell({ data, setData, user, onLogout }) {
       {page==='records'&&<RecordsPage {...{data,setData,user,patients,notify}}/>}
       {page==='medications'&&<MedicationsPage {...{data,setData,user,patients,notify}}/>}
       {page==='companion'&&<CompanionPage {...{data,setData,user,patients,notify}}/>}
+      {page==='settings'&&<CompanionSettingsPage {...{data,setData,user,patients,notify}}/>}
       {page==='care'&&<CareCirclePage {...{data,setData,user,patients,notify}}/>}
     </main></div>
     <NotificationsPanel open={notificationsOpen} onClose={()=>setNotificationsOpen(false)} {...{data,setData,user,setPage,notifications}}/>

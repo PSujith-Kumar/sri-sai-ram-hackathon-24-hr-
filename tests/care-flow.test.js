@@ -44,6 +44,12 @@ describe('connected health records', () => {
     expect(hydrated.records[0].createdBy).toBe('system')
     expect(hydrated.records[0].createdAt).toBe('1970-01-01T00:00:00.000Z')
   })
+
+  it('adds newly seeded contact fields to an older saved demo user', () => {
+    const seed = { users: [{ id: 'u-family', name: 'Ravi', phone: '+919800000101' }], records: [], queues: [], notifications: [] }
+    const stored = { users: [{ id: 'u-family', name: 'Ravi Kumar' }], records: [], queues: [] }
+    expect(hydrateCareData(stored, seed).users[0]).toMatchObject({ name: 'Ravi Kumar', phone: '+919800000101' })
+  })
 })
 
 describe('connected notifications and queues', () => {
