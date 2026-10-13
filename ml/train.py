@@ -174,7 +174,8 @@ def main():
 
     final_gold = evaluate(final, vocab, idf, gold)
     gold_b = evaluate(final, vocab, idf, gold[46:66])  # written after the first error analysis (later used for tuning)
-    fresh = evaluate(final, vocab, idf, gold[-20:])    # gold-c: written before the final fixes, never tuned against
+    fresh = evaluate(final, vocab, idf, gold[66:86])   # gold-c: written before the final fixes, never tuned against
+    gold_d = evaluate(final, vocab, idf, gold[86:])    # gold-d: Hindi and Tamil, written fresh, never trained on
     lines = ["# Mood + situation model report", "",
              f"Training sentences: {len(train)}, held-out (unseen phrasings): {len(test)}, hand-written gold: {len(gold)}. Vocabulary: {len(vocab)} features.", "",
              "Train/test are split by phrasing and by sentence structure, so the held-out set is *unseen wordings of known situations*. The gold set is",
@@ -185,10 +186,11 @@ def main():
     lines += table
     lines += section("Gold set (hand-written, exported model)", final_gold)
     lines += section("Gold-b: 20 sentences written after the first error analysis (then used to tune thresholds, so optimistic)", gold_b)
-    lines += section("Gold-c: the last 20 gold sentences (written before the final fixes, never tuned against: the fairest number)", fresh)
+    lines += section("Gold-c: 20 sentences written before the final fixes, never tuned against (fairest English number)", fresh)
+    lines += section("Gold-d: 16 fresh Hindi and Tamil sentences, never trained on (small sample: multilingual accuracy is lower than English)", gold_d)
     (ROOT / "REPORT.md").write_text("\n".join(lines), encoding="utf-8")
     print(f"vocab={len(vocab)}  model={MODEL_PATH.stat().st_size // 1024} KB")
-    for name, res in (("held-out", held_out), ("gold", final_gold), ("gold-c", fresh)):
+    for name, res in (("held-out", held_out), ("gold", final_gold), ("gold-c", fresh), ("gold-d hi/ta", gold_d)):
         s = res["safety"]
         print(f"{name:9s} mood acc={res['mood']['acc']:.3f} f1={res['mood']['f1']:.3f} | severity acc={res['severity']['acc']:.3f} f1={res['severity']['f1']:.3f} "
               f"| serious recall={s['serious_recall']:.3f} dangerous miss={s['dangerous_miss']:.3f} false alarm={s['false_alarm']:.3f}")

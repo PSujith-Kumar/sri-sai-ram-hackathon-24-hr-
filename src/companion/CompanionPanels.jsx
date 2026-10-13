@@ -3,6 +3,7 @@ import { Activity, Camera, CameraOff, Flame, Heart, Mic, MicOff, PhoneCall, Radi
 import { Badge, Card } from '../ui'
 import { LEVEL_NAMES } from './brain'
 import { USSD_CONFIG, smsHref, ussdDialHref } from './ussd'
+import { SAMPLE_PROMPT } from './useVoice'
 
 const LEVEL_TONE = ['green', 'gold', 'coral', 'coral']
 
@@ -21,7 +22,7 @@ export function StatusStrip({ aiOn, online, thermalStatus, cctvOn, recording, li
   </div>
 }
 
-export function ConversationPanel({ messages, onSend, onMic, listening, canListen, companionName }) {
+export function ConversationPanel({ messages, onSend, onMic, listening, interim, canListen, companionName }) {
   const [text, setText] = useState('')
   const submit = (e) => { e.preventDefault(); if (!text.trim()) return; onSend(text.trim()); setText('') }
   return <Card className="cmp-chat">
@@ -30,8 +31,9 @@ export function ConversationPanel({ messages, onSend, onMic, listening, canListe
       {messages.length === 0 && <p className="cmp-hint">Press “Start AI care mode” and {companionName} will say hello. You can also tap the microphone or type below.</p>}
       {messages.map(m => <div key={m.id} className={`cmp-msg cmp-${m.role}`}><span>{m.role === 'ai' ? companionName : m.role === 'patient' ? 'You' : 'System'}</span><p>{m.text}</p></div>)}
     </div>
+    {listening && <p className="cmp-listening" role="status"><Mic/> Listening… {interim ? <b>“{interim}”</b> : 'speak now (English, Hindi or Tamil)'}</p>}
     <form className="cmp-input" onSubmit={submit}>
-      <button type="button" className={`icon-btn ${listening ? 'cmp-mic-on' : ''}`} onClick={onMic} aria-label={canListen ? 'Speak to your companion' : 'Voice input not supported in this browser'} disabled={!canListen}>{canListen ? <Mic/> : <MicOff/>}</button>
+      <button type="button" className={`icon-btn ${listening ? 'cmp-mic-on' : ''}`} onClick={onMic} aria-label={canListen ? (listening ? 'Stop listening' : 'Speak to your companion') : 'Voice input needs Chrome or Edge'} title={canListen ? 'Speak to your companion' : 'Voice input needs Chrome or Edge'} disabled={!canListen}>{canListen ? <Mic/> : <MicOff/>}</button>
       <input value={text} onChange={e => setText(e.target.value)} placeholder="Type a message…" aria-label="Message to your companion"/>
       <button className="btn btn-primary" type="submit"><Send/> Send</button>
     </form>
@@ -46,15 +48,18 @@ export function VoicePanel({ voice, profile, setProfile, hasSample, recording, o
       <label>Companion name<input value={profile.companionName} maxLength="20" onChange={e => setProfile({ companionName: e.target.value || 'Asha' })}/></label>
       <label>Voice<select value={profile.voiceURI} onChange={e => setProfile({ voiceURI: e.target.value })}><option value="">Device default</option>{voices.map(v => <option key={v.voiceURI} value={v.voiceURI}>{v.name} ({v.lang})</option>)}</select></label>
       <div className="form-grid"><label>Speed {profile.rate.toFixed(1)}×<input type="range" min="0.6" max="1.4" step="0.1" value={profile.rate} onChange={e => setProfile({ rate: Number(e.target.value) })}/></label><label>Pitch {profile.pitch.toFixed(1)}<input type="range" min="0.6" max="1.6" step="0.1" value={profile.pitch} onChange={e => setProfile({ pitch: Number(e.target.value) })}/></label></div>
-      <label>Language<select value={profile.lang} onChange={e => setProfile({ lang: e.target.value })}><option value="en-IN">English (India)</option><option value="ta-IN">Tamil</option><option value="hi-IN">Hindi</option><option value="en-US">English (US)</option></select></label>
+      <label>I speak<select value={profile.lang} onChange={e => setProfile({ lang: e.target.value })}><option value="auto">Auto: English, Hindi or Tamil</option><option value="en-IN">English (India)</option><option value="hi-IN">Hindi (हिन्दी)</option><option value="ta-IN">Tamil (தமிழ்)</option><option value="en-US">English (US)</option></select></label>
       <div className="cmp-actions"><button className="btn btn-secondary" type="button" onClick={onTest}><Volume2/> Hear this voice</button><button className="btn btn-secondary" type="button" onClick={onRecord} disabled={recording}><Mic/> {recording ? 'Recording… speak now' : hasSample ? 'Re-record voice sample' : 'Record a voice sample'}</button></div>
+      <p className="cmp-note">To teach {profile.companionName} how you normally sound, tap “Record a voice sample” and read aloud: <b>“{SAMPLE_PROMPT}”</b>. Later, a weak, shaky or very different voice makes {profile.companionName} check on you and, if worrying, alert your family and doctor. This compares your voice with your own usual voice; it does not identify who is speaking.</p>
       <p className="cmp-note">{voice.cloudVoice ? 'Voice cloning is connected: replies use the recorded sample.' : 'A recorded sample is stored on this device. To make replies sound like it, set VITE_TTS_ENDPOINT to a voice-cloning service; until then the closest installed voice is used.'}</p>
     </div>
   </Card>
 }
 
-export function UnderstandingPanel({ snapshot, events, camera }) {
-  const rows = [['Conditions', snapshot.conditions.join(', ') || 'None recorded'], ['Allergies', snapshot.allergies.join(', ') || 'None recorded'], ['Medicine adherence', `${snapshot.adherence}%`], ['Latest record', snapshot.latestRecord], ['Latest mood', snapshot.latestMood ? `${snapshot.latestMood.mood}${snapshot.latestMood.confidence ? ` (${Math.round(snapshot.latestMood.confidence * 100)}%)` : ''}` : 'Not heard yet'], ['Mood trend', snapshot.moodTrend], ['Alerts in 24h', String(snapshot.alerts24h)]]
+const VOICE_TEXT = { normal: 'sounds normal', unusual: 'sounds a little different', concerning: 'sounds weak or unwell', unknown: 'too short to judge' }
+
+export function UnderstandingPanel({ snapshot, events, camera, voiceCheck, baseline }) {
+  const rows = [['Conditions', snapshot.conditions.join(', ') || 'None recorded'], ['Allergies', snapshot.allergies.join(', ') || 'None recorded'], ['Medicine adherence', `${snapshot.adherence}%`], ['Latest record', snapshot.latestRecord], ['Latest mood', snapshot.latestMood ? `${snapshot.latestMood.mood}${snapshot.latestMood.confidence ? ` (${Math.round(snapshot.latestMood.confidence * 100)}%)` : ''}` : 'Not heard yet'], ['Voice', voiceCheck ? `${VOICE_TEXT[voiceCheck.status]}${voiceCheck.reasons.length ? `: ${voiceCheck.reasons.join(', ')}` : ''}` : 'Not heard yet'], ['Voice baseline', baseline ? `learned from ${baseline.n} sample${baseline.n === 1 ? '' : 's'}` : 'Not recorded yet'], ['Mood trend', snapshot.moodTrend], ['Alerts in 24h', String(snapshot.alerts24h)]]
   return <Card className="cmp-profile">
     <div className="card-head"><div><p className="eyebrow">WHAT THE AI KNOWS</p><h2>Patient understanding</h2></div><Badge tone="mint"><Activity/> Auto-updated</Badge></div>
     <dl>{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>

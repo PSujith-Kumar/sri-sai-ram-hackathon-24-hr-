@@ -7,13 +7,15 @@ import { ClipsPanel, ContactsPanel, PrivacyPanel } from './PrivacyPanels'
 import { deleteClip, listClips, saveClip } from './incidentStore'
 import { GUARD_MODE, initialGuard, stepGuard } from './privacy'
 import { enqueue, isMobileDevice, makeRelayItem, markSent, pending, ussdDialHref } from './ussd'
-import { loadVoiceSample, useVoice } from './useVoice'
+import { SAMPLE_WORDS, explainSpeechError, loadVoiceSample, useVoice } from './useVoice'
+import { assessVoice, updateBaseline } from './voiceAnalysis'
+import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
 import { loadMoodModel } from './mood'
 
 const DEFAULT_PROFILE = {
-  voiceURI: '', rate: 1, pitch: 1, lang: 'en-IN', companionName: 'Asha', autonomous: false, checkInSeconds: 60,
+  voiceURI: '', rate: 1, pitch: 1, lang: 'auto', companionName: 'Asha', autonomous: false, checkInSeconds: 60, voiceBaseline: null,
   thermal: { kind: 'sim', url: '', cctvKind: 'webcam', cctvUrl: '' }, contacts: [],
 }
 const EMPTY = { profile: DEFAULT_PROFILE, moods: [], events: [], relayQueue: [] }
@@ -73,7 +75,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const addContact = useCallback((contact) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: [...p.contacts, { ...contact, id: uid('k') }] } } }), [update])
   const removeContact = useCallback((id) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: p.contacts.filter(k => k.id !== id) } } }), [update])
 
-  const voice = useVoice({ profile, patientId: patient.id })
+  const voice = useVoice({ profile, patientId: patient.id, onProblem: (code, lang) => live.current.onMicProblem?.(code, lang) })
   const cctv = useCamera({
     source: { kind: profile.thermal.cctvKind, url: profile.thermal.cctvUrl }, enabled: cctvOn, forceUnavailable: false,
     onEvent: (e) => { cctvEventsRef.current.push(e); live.current.onCameraEvent?.(e) },
@@ -90,7 +92,11 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   live.current = { ...live.current, online, eyes, meds, profile, ctx, patient, name: user.name }
 
   const addMessage = useCallback((role, text) => setMessages(m => [...m.slice(-60), { id: uid('m'), role, text }]), [])
-  const say = useCallback(async (text) => { addMessage('ai', text); await voice.speak(text) }, [addMessage, voice])
+  // Language the patient last spoke (or the one chosen in settings); replies are written and voiced in it.
+  const replyLangRef = useRef(profile.lang === 'auto' ? 'en' : profile.lang.slice(0, 2))
+  const seedRef = useRef(0)
+  const say = useCallback(async (text, lang = replyLangRef.current) => { addMessage('ai', text); await voice.speak(text, lang) }, [addMessage, voice])
+  live.current.onMicProblem = (code, lang) => { const help = explainSpeechError(code, lang); if (help) addMessage('system', help) }
   const refreshClips = useCallback(() => listClips().then(setClips), [])
   useEffect(() => { refreshClips() }, [refreshClips])
   useEffect(() => { loadMoodModel().catch(() => {}) }, []) // falls back to keyword rules if the model cannot load
@@ -140,23 +146,32 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     return assessSituation({ camera: { status: L.eyes, possibleFall: fallRef.current, inactive: inactiveRef.current }, thermal: thermalActiveRef.current, confirmed: guardRef.current.mode === GUARD_MODE.recording, missedCheckins: missedRef.current, meds: L.meds, nowMinutes: nowMinutes(), ...L.ctx, ...extra })
   }, [])
 
-  const processUtterance = useCallback(async (text) => {
+  const [voiceCheck, setVoiceCheck] = useState(null)
+
+  const processUtterance = useCallback(async (text, heard = null) => {
     const L = live.current
     const analysis = analyzeUtterance(text, L.ctx)
-    update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, at: new Date().toISOString() }].slice(-60) }))
+    replyLangRef.current = analysis.lang
+    // How the voice itself sounded, compared with this patient's usual voice (see voiceAnalysis.js).
+    const voiceResult = heard?.features ? assessVoice(heard.features, L.profile.voiceBaseline, text.trim().split(/\s+/).length) : null
+    setVoiceCheck(voiceResult)
+    if (voiceResult?.status === 'normal') setProfile({ voiceBaseline: updateBaseline(L.profile.voiceBaseline, heard.features, voiceResult.rate) })
+    update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, voice: voiceResult?.status || null, at: new Date().toISOString() }].slice(-60) }))
     if (analysis.intent === 'medicine-taken') {
       const target = L.meds.find(m => m.status !== 'taken')
       if (target) setData(d => ({ ...d, medications: d.medications.map(m => (m.id === target.id ? { ...m, status: 'taken' } : m)) }))
     }
-    raise(assess({ utterance: text, missedCheckins: 0 }))
+    const assessment = assess({ utterance: text, voice: voiceResult, missedCheckins: 0 })
+    // A worrying voice alerts the family AND the doctor (and Asha tells the patient she is doing so).
+    raise(assessment, { toDoctor: assessment.codes.includes('VC') && assessment.level >= LEVEL.urgent })
     const token = data.tokens.find(t => t.patientId === L.patient.id && t.status === 'waiting')
     const queue = data.queues.find(q => q.id === token?.queueId)
     const ahead = token && queue ? Math.max(0, token.number - queue.serving - 1) : null
-    const queueInfo = ahead === null ? '' : `Your token is CAR-${String(token.number).padStart(3, '0')}. There ${ahead === 1 ? 'is 1 person' : `are ${ahead} people`} ahead of you, about ${ahead * queue.avgMinutes} minutes.`
-    await say(companionReply({ analysis, name: L.name, meds: L.meds, queueInfo, seed: Date.now() }))
-  }, [update, setData, raise, assess, say, data.tokens, data.queues])
+    const queueInfo = ahead === null || analysis.lang !== 'en' ? '' : `Your token is CAR-${String(token.number).padStart(3, '0')}. There ${ahead === 1 ? 'is 1 person' : `are ${ahead} people`} ahead of you, about ${ahead * queue.avgMinutes} minutes.`
+    await say(companionReply({ analysis, voice: voiceResult, name: L.name, companion: L.profile.companionName, meds: L.meds, queueInfo, seed: seedRef.current++, now: new Date() }), analysis.lang)
+  }, [update, setProfile, setData, raise, assess, say, data.tokens, data.queues])
 
-  const handleHeard = useCallback(async (text) => {
+  const handleHeard = useCallback(async (text, heard = null) => {
     lastContactRef.current = Date.now()
     respondedAtRef.current = Date.now()
     missedRef.current = 0
@@ -164,7 +179,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     inactiveRef.current = false
     typedRef.current = text
     addMessage('patient', text)
-    await processUtterance(text)
+    await processUtterance(text, heard)
   }, [addMessage, processUtterance])
 
   const runCheckIn = useCallback(async () => {
@@ -173,9 +188,9 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     try {
       const L = live.current
       for (const attempt of [0, 1]) {
-        await say(checkInPrompt(L.name, attempt))
-        const heard = await hearReply(10000)
-        if (heard) { await handleHeard(heard); return }
+        await say(checkInPrompt(L.name, attempt, replyLangRef.current))
+        const heardText = await hearReply(10000)
+        if (heardText) { await handleHeard(heardText, voice.heard()); return }
       }
       missedRef.current += 1
       lastContactRef.current = Date.now()
@@ -184,7 +199,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     } finally {
       busyRef.current = false
     }
-  }, [say, hearReply, handleHeard, addMessage, raise, assess])
+  }, [say, hearReply, handleHeard, addMessage, raise, assess, voice])
 
   const onCameraEvent = useCallback((event) => {
     if (event === 'possible-fall') { fallRef.current = true; addMessage('system', 'CCTV check: possible fall confirmed.') }
@@ -247,7 +262,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
       const L = live.current
       dueMedications(L.meds, nowMinutes()).filter(m => !remindedRef.current.has(m.id)).forEach(m => {
         remindedRef.current.add(m.id)
-        say(`It's time for your ${m.name}, ${m.instruction.toLowerCase()}, ${m.note.toLowerCase()}. Please tell me once you've taken it.`)
+        say(localize(replyLangRef.current, 'medReminder', { med: `${m.name}, ${m.instruction.toLowerCase()}, ${m.note.toLowerCase()}` }))
       })
       if (L.eyes !== 'live' && !busyRef.current && Date.now() - lastContactRef.current >= L.profile.checkInSeconds * 1000) runCheckIn()
     }, 5000)
@@ -281,12 +296,23 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   }
 
   const onMic = async () => {
-    const heard = await voice.listen(10000)
-    if (heard) await handleHeard(heard)
+    if (voice.listening) { voice.stopListening(); return }
+    voice.stopSpeaking() // otherwise the microphone hears Asha instead of the patient
+    const heardText = await voice.listen(10000)
+    if (heardText) await handleHeard(heardText, voice.heard())
   }
   const onRecordSample = async () => {
     setRecordingSample(true)
-    try { setHasSample(Boolean(await voice.recordSample(8))) } catch { notify('Microphone permission is needed to record a sample') } finally { setRecordingSample(false) }
+    try {
+      const { saved, features } = await voice.recordSample(8)
+      setHasSample(saved)
+      if (features) {
+        const words = SAMPLE_WORDS
+        const rate = words / (features.durationSec * (1 - features.pauseRatio))
+        setProfile({ voiceBaseline: updateBaseline(null, features, rate) })
+        addMessage('system', 'Voice sample saved. I will use it to notice when your voice sounds weaker or different than usual.')
+      } else addMessage('system', 'The sample was too quiet or too short to learn from. Please try again closer to the microphone.')
+    } catch { notify('Microphone permission is needed to record a sample') } finally { setRecordingSample(false) }
   }
   const removeClip = async (id) => { await deleteClip(id); refreshClips() }
 
@@ -297,9 +323,9 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     <PageTitle eyebrow="AI COMPANION · PATIENT CARE" title={`${companionName} is looking after you.`} text="Your companion talks with you and keeps watch privately: CCTV stays off, a heat sensor watches, and the camera only opens if something looks wrong. Family, doctor and caretaker are alerted when it matters." actions={<button className={`btn ${profile.autonomous ? 'btn-dark' : 'btn-primary'}`} onClick={toggleAi}><Power/> {profile.autonomous ? 'Stop AI care mode' : 'Start AI care mode'}</button>}/>
     <StatusStrip aiOn={profile.autonomous} online={online} thermalStatus={thermal.status} cctvOn={cctvOn} recording={recordingActive} listening={voice.listening} speaking={voice.speaking} level={level}/>
     <div className="cmp-grid">
-      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} listening={voice.listening} canListen={voice.canListen} companionName={companionName}/>
+      <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
       <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }}/>
-      <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText}/>
+      <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
       <ContactsPanel contacts={profile.contacts} onAdd={addContact} onRemove={removeContact}/>
       <ClipsPanel clips={clips} onDelete={removeClip}/>

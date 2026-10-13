@@ -179,3 +179,5 @@ button:disabled { cursor: not-allowed; opacity: .55; }
 .cmp-contact-list small { color: #526965; }
 .cmp-clip-video { width: 100%; margin-top: 12px; border-radius: 12px; }
 .cmp-brief { margin: 4px 0 0; font-size: 13px; color: #36524e; }
+.cmp-listening { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 12px; border-radius: 12px; background: #fae6e0; color: #7d2f20; font-size: 14px; }
+.cmp-listening svg { width: 16px; height: 16px; flex: none; animation: cmp-pulse 1.2s ease-in-out infinite; }

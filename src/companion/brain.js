@@ -1,5 +1,6 @@
 // Decision logic for the AI companion. Pure functions only: no browser APIs, easy to test.
 
+import { detectLanguage, localize } from './language'
 import { predictMood } from './mood'
 
 export const LEVEL = { none: 0, watch: 1, urgent: 2, critical: 3 }
@@ -11,7 +12,7 @@ export const REASON_LABELS = {
   FL: 'a fall', SY: 'concerning symptoms', HP: 'asked for help', PN: 'pain or discomfort', MH: 'emotional crisis',
   AL: 'allergy risk', BP: 'symptoms with known hypertension', NR: 'no response', MD: 'medication not confirmed', IN: 'unusual inactivity',
   FV: 'high body temperature', HZ: 'heat hazard in the room', AB: 'abnormal activity confirmed',
-  ML: 'distress detected by the AI mood model',
+  ML: 'distress detected by the AI mood model', VC: 'voice sounds weak, shaky or unwell',
 }
 
 const SYMPTOM_RULES = [
@@ -25,6 +26,16 @@ const SYMPTOM_RULES = [
   { re: /help me|i need help|emergency|call (a |the )?doctor/i, code: 'HP', level: 2 },
   { re: /dizz(y|iness)|light-?headed|blurred vision|headache/i, code: 'SY', level: 1 },
   { re: /\bpain\b|hurts?|vomit|nausea|fever/i, code: 'PN', level: 1 },
+  // Hindi / Tamil, in script and romanised (no \b: it does not work for non-Latin scripts)
+  { re: /सीने में[^.!?]{0,14}(दर्द|जकड़न|दबाव)|seene mein[^.!?]{0,14}(dard|jakdan)|chest mein dard|நெஞ்சு[^.!?]{0,14}வலி|nenju[^.!?]{0,14}vali/i, code: 'CP', level: 3 },
+  { re: /सा[ंँ]स नहीं|सा[ंँ]स लेने में (तकलीफ|दिक्कत)|saans (nahi|nahin|lene mein (takleef|dikkat))|மூச்சு ?(விட|திணறல்)|moochu ?(vida|thinaral|mudiyala)/i, code: 'BR', level: 3, selfNegating: true },
+  { re: /बेहोश|behosh|மயக்கம்|மயங்கி|mayakkam|mayangi/i, code: 'FN', level: 3 },
+  { re: /बहुत खून|khoon (beh|nikal)|இரத்தம் (கொட்ட|வடி)|ratham (kottu|vadi)/i, code: 'BL', level: 3 },
+  { re: /मरना चाहत|जीना नहीं|jeena nahi|marna chahta|marna chahti|சாக வேண்டும்|saaga vendum|வாழ பிடிக்கவில்லை/i, code: 'MH', level: 3, selfNegating: true },
+  { re: /गिर गया|गिर गई|gir gaya|gir gayi|கீழே விழுந்|vizhundhu|vizhundhen/i, code: 'FL', level: 2 },
+  { re: /मदद|बचाओ|bachao|madad|உதவி|udavi|kaapathunga|காப்பாற்றுங்கள்/i, code: 'HP', level: 2 },
+  { re: /चक्कर|chakkar|सिर दर्द|sir dard|தலை ?(சுற்று|வலி)|thalai ?(suthudhu|suthuthu|vali)/i, code: 'SY', level: 1 },
+  { re: /दर्द|dard|வலி/i, code: 'PN', level: 1 },
 ]
 
 const MOOD_RULES = [
@@ -43,20 +54,28 @@ export function detectMood(text = '') {
 }
 
 export function detectIntent(text = '') {
-  if (/(took|taken|had|finished) (my )?(medicine|medication|tablet|pill)/i.test(text)) return 'medicine-taken'
-  if (/medicine|medication|tablet|pill/i.test(text)) return 'medicine'
-  if (/token|queue|my turn|how long|wait/i.test(text)) return 'queue'
-  if (/\bhello\b|\bhi\b|\bhey\b|good (morning|afternoon|evening)/i.test(text)) return 'greeting'
-  if (/thank/i.test(text)) return 'thanks'
+  if (/(took|taken|had|finished) (my )?(medicine|medication|tablet|pill)s?|(dawai|dawa|goli|tablet|medicine).{0,12}(le li|kha li|li hai|liya)|(दवा|दवाई|गोली).{0,12}(ले ली|खा ली|ली)|(மாத்திரை|மருந்து).{0,12}(சாப்பிட்டேன்|போட்டேன்)|maathirai.{0,12}(sapitten|pottein)/i.test(text)) return 'medicine-taken'
+  if (/medicine|medication|tablet|pill|dawai|dawa|goli|दवा|दवाई|गोली|மாத்திரை|மருந்து|maathirai/i.test(text)) return 'medicine'
+  if (/\b(token|queue|my turn|how long|wait|baari)\b|टोकन|வரிசை/i.test(text)) return 'queue'
+  if (/tell me about (yourself|you)|who are you|your name|what can you do|are you (a )?(robot|human|real)|aap kaun|tum kaun|apne baare|आप कौन|तुम कौन|अपने बारे|நீங்கள் யார்|நீ யார்|உன்னைப் பற்றி|neenga yaar|nee yaar|unga peyar/i.test(text)) return 'about'
+  if (/how are you|how're you|how r u|aap kaise|tum kaise|kaise ho|कैसे हो|आप कैसे|எப்படி இருக்கிற|eppadi irukkeenga|epdi irukka/i.test(text)) return 'howAreYou'
+  if (/what('?s| is) the time|what time is it|time now|kitne baje|कितने बजे|समय क्या|மணி என்ன/i.test(text)) return 'time'
+  if (/what('?s| is) (the |today'?s )?(date|day)|today'?s date|आज की तारीख|இன்று என்ன (தேதி|கிழமை)/i.test(text)) return 'date'
+  if (/\bjoke\b|make me laugh|चुटकुला|ஜோக்/i.test(text)) return 'joke'
+  if (/\b(bye|goodbye|good night|see you|talk later)\b|अलविदा|शुभ रात्रि|poitu varen|போய் வருகிறேன்/i.test(text)) return 'goodbye'
+  if (/thank|shukriya|dhanyavad|धन्यवाद|शुक्रिया|nandri|நன்றி/i.test(text)) return 'thanks'
+  if (/\bhello\b|\bhi\b|\bhey\b|good (morning|afternoon|evening)|namaste|namaskar|नमस्ते|vanakkam|வணக்கம்/i.test(text)) return 'greeting'
   return 'chat'
 }
 
 // "no chest pain", "I'm not dizzy anymore": a negation shortly before a symptom cancels it.
 const NEGATION = /\b(no|not|never|without|free of|don'?t have|do not have|didn'?t have|haven'?t|hasn'?t|isn'?t|aren'?t|wasn'?t|nor)\b[^.!?,;]{0,25}$/i
-const isNegated = (text, index) => NEGATION.test(text.slice(Math.max(0, index - 40), index))
+// Hindi / Tamil negate after the symptom: "सीने में दर्द नहीं है", "vali illa"
+const NEGATED_AFTER = /^[^.!?]{0,16}(नहीं|नही|\bnahi\b|\bnahin\b|\billa\b|\billai\b|இல்லை|இல்ல)/i
+const isNegated = (text, index, end) => NEGATION.test(text.slice(Math.max(0, index - 40), index)) || NEGATED_AFTER.test(text.slice(end))
 const matchesRule = (rule, text) => {
   const m = rule.re.exec(text)
-  return Boolean(m) && (rule.selfNegating || !isNegated(text, m.index))
+  return Boolean(m) && (rule.selfNegating || !isNegated(text, m.index, m.index + m[0].length))
 }
 
 const MOOD_CONFIDENCE = 0.45
@@ -89,7 +108,7 @@ export function analyzeUtterance(text = '', { conditions = [], allergies = [] } 
   const ml = modelView(text)
   if (ml && ml.level > level) { level = ml.level; codes.push('ML') }
   const mood = ml && ml.moodProb >= MOOD_CONFIDENCE ? ml.mood : detectMood(text)
-  return { mood, moodConfidence: ml ? ml.moodProb : null, intent: detectIntent(text), level, codes: unique(codes) }
+  return { mood, moodConfidence: ml ? ml.moodProb : null, intent: detectIntent(text), lang: detectLanguage(text), level, codes: unique(codes) }
 }
 
 const toMinutes = (hhmm) => { const [h, m] = hhmm.split(':').map(Number); return h * 60 + m }
@@ -108,7 +127,7 @@ export function dueMedications(meds = [], nowMinutes, windowMinutes = 15) {
  * Combine every signal (what the patient said, camera, missed check-ins, medicines, record)
  * into one decision. `camera.status === 'live'` means the AI can see the patient.
  */
-export function assessSituation({ utterance = null, camera = {}, thermal = [], confirmed = false, missedCheckins = 0, meds = [], nowMinutes = 0, conditions = [], allergies = [] } = {}) {
+export function assessSituation({ utterance = null, voice = null, camera = {}, thermal = [], confirmed = false, missedCheckins = 0, meds = [], nowMinutes = 0, conditions = [], allergies = [] } = {}) {
   const codes = []
   let level = LEVEL.none
   const raise = (code, lvl) => { codes.push(code); level = Math.max(level, lvl) }
@@ -118,6 +137,10 @@ export function assessSituation({ utterance = null, camera = {}, thermal = [], c
     a.codes.forEach(c => codes.push(c))
     level = Math.max(level, a.level)
   }
+  // How the voice sounds (see voiceAnalysis.js): unusual alone is a watch; concerning, or unusual with
+  // distress in the words, is serious enough to alert family and doctor.
+  if (voice?.status === 'concerning') raise('VC', LEVEL.urgent)
+  else if (voice?.status === 'unusual') raise('VC', level >= LEVEL.watch ? LEVEL.urgent : LEVEL.watch)
   // Thermal sensor findings (privacy-safe); `confirmed` means the CCTV check verified something abnormal.
   const fall = camera.possibleFall || thermal.includes('possible-fall')
   const still = camera.inactive || thermal.includes('no-motion')
@@ -150,53 +173,50 @@ export function assessSituation({ utterance = null, camera = {}, thermal = [], c
   }
 }
 
-const pick = (list, seed) => list[Math.abs(seed) % list.length]
+const LOCALES = { en: 'en-IN', hi: 'hi-IN', ta: 'ta-IN' }
 
-export function companionReply({ analysis, name = 'friend', meds = [], queueInfo = '', seed = 0 }) {
-  const first = name.split(' ')[0]
-  if (analysis.codes.includes('MH')) {
-    return `${first}, I'm really glad you told me. You matter, and you don't have to carry this alone. I'm letting your family know right now so someone can be with you. If you feel unsafe, please call Tele-MANAS on 14416 any time. I'm staying right here with you.`
+/**
+ * Chooses *what* to say from the situation (safety first, then voice, intent, mood) and
+ * renders it in the patient's language. `voice` is the result of assessVoice().
+ */
+export function companionReply({ analysis, name = 'friend', companion = 'Asha', meds = [], queueInfo = '', seed = 0, now = new Date(), voice = null }) {
+  const lang = analysis.lang || 'en'
+  const next = meds.find(m => m.status === 'unconfirmed')
+  const vars = {
+    first: name.split(' ')[0], companion, seed, queueInfo,
+    med: next ? `${next.name}, ${next.instruction.toLowerCase()}, ${next.note.toLowerCase()}` : '',
+    time: now.toLocaleTimeString(LOCALES[lang], { hour: 'numeric', minute: '2-digit' }),
+    date: now.toLocaleDateString(LOCALES[lang], { weekday: 'long', day: 'numeric', month: 'long' }),
   }
-  if (analysis.level >= LEVEL.critical) {
-    return `${first}, this sounds serious, so I'm acting now. I'm alerting your family and your hospital right away. Please sit or lie down somewhere safe and stay with me. Help is on the way.`
-  }
-  if (analysis.level === LEVEL.urgent) {
-    return `I'm worried about that, ${first}. I'm letting your family know so you're not alone. Can you tell me exactly how you feel right now?`
-  }
-  if (analysis.level === LEVEL.watch && analysis.codes.includes('SY')) {
-    return `Thanks for telling me, ${first}. Let's keep a close eye on that. Please rest and sip some water. If it gets worse, just say "I need help" and I'll alert everyone.`
-  }
+  const say = (key) => localize(lang, key, vars)
+
+  if (analysis.codes.includes('MH')) return say('mh')
+  if (analysis.level >= LEVEL.critical) return say('critical')
+  if (analysis.level === LEVEL.urgent) return say('urgent')
+  if (voice?.status === 'concerning') return say('voiceAlert')
+  if (analysis.level === LEVEL.watch && analysis.codes.includes('SY')) return say('watchSymptom')
+
   switch (analysis.intent) {
-    case 'medicine-taken': return `That's wonderful, ${first}. I'll note that down. Taking it on time really helps.`
-    case 'medicine': {
-      const next = meds.find(m => m.status === 'unconfirmed')
-      return next ? `Your next one is ${next.name}, ${next.instruction.toLowerCase()}, ${next.note.toLowerCase()}. Shall I remind you when it's time?` : `You've taken everything on your list for today. Well done, ${first}!`
-    }
-    case 'queue': return queueInfo || `I'll keep watching your queue and tell you when your turn is close.`
-    case 'greeting': return pick([`Hello ${first}! It's lovely to hear from you. How are you feeling today?`, `Hi ${first}! I'm here. How has your day been so far?`], seed)
-    case 'thanks': return `Always, ${first}. That's what friends are for.`
+    case 'medicine-taken': return say('medTaken')
+    case 'medicine': return say(next ? 'medicine' : 'medicineDone')
+    case 'queue': return queueInfo || say('queue')
+    case 'greeting': return say('greeting')
+    case 'thanks': return say('thanks')
+    case 'about': return say('about')
+    case 'howAreYou': return say('howAreYou')
+    case 'goodbye': return say('goodbye')
+    case 'time': return say('time')
+    case 'date': return say('date')
+    case 'joke': return say('joke')
     default: break
   }
-  if (analysis.mood === 'low' && analysis.level === LEVEL.watch) {
-    return `That sounds really heavy, ${first}, and not eating or sleeping well makes it harder. I'm here with you. I'll let your care team know you're having a low time so they can support you, and I'll check in on you again soon.`
-  }
-  switch (analysis.mood) {
-    case 'angry': return `I hear you, ${first}, and your frustration is completely fair. I'm sorry you're being kept waiting. Let me look at your queue, and I'll make sure the staff know how you feel.`
-    case 'distressed': return `I'm sorry you're not feeling well, ${first}. Can you tell me where it hurts and how long it has been going on? I'm paying close attention, and I'll call for help the moment you ask.`
-    case 'low': return `I'm sorry you're feeling that way, ${first}. I'm right here, and I'd love to keep you company. Would you like to tell me what's on your mind, or shall we talk about something that makes you smile?`
-    case 'anxious': return `It's okay to feel worried, ${first}. Let's take a slow breath together: in for four, hold, and out for six. I'm with you, and everything is being looked after.`
-    case 'tired': return `You sound tired, ${first}. Rest is part of healing. I'll keep watch while you relax.`
-    case 'happy': return `I'm so glad to hear that, ${first}! Anything nice planned for today?`
-    default: return pick([`I'm listening, ${first}. Tell me more.`, `Mm-hm, I'm here with you, ${first}. Go on.`], seed)
-  }
+  if (voice?.status === 'unusual') return say('voiceConcern')
+  if (analysis.mood === 'low' && analysis.level === LEVEL.watch) return say('lowWatch')
+  if (['angry', 'distressed', 'low', 'anxious', 'tired', 'happy'].includes(analysis.mood)) return say(analysis.mood)
+  return say('default')
 }
 
-export const checkInPrompt = (name, attempt) => {
-  const first = name.split(' ')[0]
-  return attempt === 0
-    ? `Hi ${first}, just checking in. How are you feeling right now?`
-    : `${first}, I haven't heard back yet. Are you okay? Please say something or tap the screen.`
-}
+export const checkInPrompt = (name, attempt, lang = 'en') => localize(lang, attempt === 0 ? 'checkIn0' : 'checkIn1', { first: name.split(' ')[0] })
 
 /** Compact, structured snapshot that the AI keeps for each patient so analysis stays quick. */
 export function buildSnapshot({ patient, records = [], meds = [], moods = [], events = [], now = Date.now() }) {

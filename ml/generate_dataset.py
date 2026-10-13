@@ -15,6 +15,7 @@ import zlib
 from pathlib import Path
 
 from handwritten import HANDWRITTEN
+from handwritten_multilingual import MULTILINGUAL
 
 random.seed(42)
 OUT = Path(__file__).parent / "data"
@@ -282,6 +283,11 @@ def build():
         bucket = test if zlib.crc32(("hw|" + text).encode()) % 5 == 0 else train
         for variant in (text, vary(text), vary(text)):
             bucket[variant.lower()] = {"text": variant, "mood": mood, "severity": severity, "group": "handwritten"}
+    # Hindi / Tamil (script + romanised): small, so each sentence gets a few punctuation / typo variants
+    for text, mood, severity in MULTILINGUAL:
+        bucket = test if zlib.crc32(("ml|" + text).encode()) % 5 == 0 else train
+        for variant in (text, typo(text), text + ".", text + "!"):
+            bucket[variant.lower()] = {"text": variant, "mood": mood, "severity": severity, "group": "multilingual"}
     # compound sentences: a calm opener followed by something severe keeps the severe label
     for group, mood, severity, phrases in GROUPS:
         if severity not in SEVERE:
@@ -385,6 +391,23 @@ GOLD = [
     ("I feel completely worn out after therapy", "tired", "none"),
     ("Everything is dark in front of my eyes and I can't hold myself up", "distressed", "critical"),
     ("Thank you nurse, you really brightened my day", "happy", "none"),
+    # --- gold-d: Hindi and Tamil, written fresh and never trained on
+    ("आज बेटी मिलने आई, मैं बहुत खुश हूँ", "happy", "none"),
+    ("मुझे बहुत घबराहट हो रही है, दिल तेज़ धड़क रहा है", "anxious", "watch"),
+    ("पिछले तीन दिन से कुछ खाने का मन नहीं करता, सब बेकार लगता है", "low", "watch"),
+    ("मेरे सीने में तेज़ दर्द है और बाँह सुन्न है", "distressed", "critical"),
+    ("मैं बाथरूम में फिसल कर गिर गया", "distressed", "urgent"),
+    ("डॉक्टर साहब कितने बजे आएँगे", "neutral", "none"),
+    ("सारा दिन सोने का मन करता है, बहुत थकान है", "tired", "none"),
+    ("इतनी देर से कोई नहीं आया, मुझे बहुत गुस्सा आ रहा है", "angry", "none"),
+    ("இன்று பேரன் வந்தான், மனம் மிகவும் மகிழ்ச்சி", "happy", "none"),
+    ("எனக்கு மூச்சு திணறுகிறது, உடனே வாருங்கள்", "distressed", "critical"),
+    ("நாளை ஆபரேஷன், நினைத்தாலே பயமாக இருக்கிறது", "anxious", "none"),
+    ("இரவு தூக்கம் வரவில்லை, ரொம்ப சோர்வு", "tired", "watch"),
+    ("டாக்டர் எந்த நேரத்தில் வருவார்", "neutral", "none"),
+    ("தனியாக இருப்பது மிகவும் கஷ்டமாக இருக்கிறது", "low", "none"),
+    ("லேசான இருமல் இருக்கிறது", "distressed", "watch"),
+    ("நான் வாழ விரும்பவில்லை", "low", "critical"),
 ]
 
 
