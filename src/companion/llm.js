@@ -9,7 +9,9 @@
 // elsewhere, they do, so the UI warns about it (isLocalEndpoint).
 
 export const LLM_DEFAULTS = { enabled: false, endpoint: '/ollama', model: 'gemma3:4b' }
-export const LLM_TIMEOUT_MS = 25000
+// A 4B model on a laptop (part CPU) needs time to load and to write; slower than a hosted API.
+export const LLM_TIMEOUT_MS = 60000
+const KEEP_LOADED = '30m' // keep Gemma in memory between messages so only the first reply pays the load time
 const MAX_REPLY_CHARS = 700
 const HISTORY_TURNS = 6
 
@@ -91,7 +93,8 @@ export async function askGemma(settings, input, fetchImpl = fetch) {
         model: settings.model,
         stream: false,
         format: RESULT_SCHEMA,
-        options: { temperature: 0.6, num_predict: 260 },
+        keep_alive: KEEP_LOADED,
+        options: { temperature: 0.6, num_predict: 180 }, // replies are 1-3 short sentences; fewer tokens = faster
         messages: buildMessages(input),
       }),
     })
@@ -103,6 +106,16 @@ export async function askGemma(settings, input, fetchImpl = fetch) {
   } finally {
     clearTimeout(timer)
   }
+}
+
+/** Loads the model into memory ahead of the first real message (an empty prompt just loads it). Best effort. */
+export async function warmGemma(settings, fetchImpl = fetch) {
+  try {
+    await fetchImpl(`${trimSlash(settings.endpoint)}/api/generate`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: settings.model, prompt: '', stream: false, keep_alive: KEEP_LOADED }),
+    })
+  } catch { /* the first real message will simply be slower */ }
 }
 
 /** Is the server reachable, and is the model pulled? Used by the "Test connection" button. */

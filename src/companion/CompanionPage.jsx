@@ -13,7 +13,7 @@ import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
 import { loadMoodModel } from './mood'
-import { LLM_DEFAULTS, askGemma, buildSystemPrompt, checkGemma } from './llm'
+import { LLM_DEFAULTS, askGemma, buildSystemPrompt, checkGemma, warmGemma } from './llm'
 import { CLASSIFIER_DEFAULTS, checkClassifier, classifyRemote } from './remoteModel'
 import { EMPTY_COMPANION, mergeProfile } from './config'
 import { appendConversationMemory, avoidRepeatedResponse, conversationSignals, pruneConversationMemory } from './memory'
@@ -178,8 +178,16 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   useEffect(() => { checkClassifier(live.current.profile.classifier).then(r => setClassifierOk(r.ok ? r : false)) }, [])
   const [llmStatus, setLlmStatus] = useState(null)
   const llmWarnedRef = useRef(false)
-  const setLlm = useCallback((patch) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, llm: { ...p.llm, ...patch } } } }), [update])
-  const testLlm = async () => { setLlmStatus('testing'); setLlmStatus(await checkGemma(live.current.profile.llm)) }
+  const setLlm = useCallback((patch) => {
+    update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, llm: { ...p.llm, ...patch } } } })
+    if (patch.enabled) warmGemma({ ...live.current.profile.llm, ...patch }) // load the model now, not on the first message
+  }, [update])
+  const testLlm = async () => {
+    setLlmStatus('testing')
+    const status = await checkGemma(live.current.profile.llm)
+    setLlmStatus(status)
+    if (status.ok && status.hasModel) warmGemma(live.current.profile.llm)
+  }
 
   /** Asks Gemma for a reply + second opinion. Skipped for emergencies, so nothing slows the safety path. */
   const consultGemma = useCallback(async (text, analysis, voiceResult) => {
