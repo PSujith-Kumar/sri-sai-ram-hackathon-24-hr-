@@ -307,3 +307,33 @@ button:disabled { cursor: not-allowed; opacity: .55; }
   .map-row-path > select:first-child { grid-column: 1 / 3; }
   .map-editor-start .btn { flex: 1 1 100%; }
 }
+
+/* ---- MedMinder scheduling ---- */
+.med-source { margin: 2px 0 8px; color: #647b76; font-size: 13px; }
+.med-manage { display: flex; gap: 14px; margin-top: 12px; padding-top: 10px; border-top: 1px solid #e1e8e5; }
+.med-delete { color: #a54835; }
+.med-patient-picker { display: grid; gap: 4px; max-width: 360px; margin: 0 0 14px; font-size: 13px; font-weight: 700; }
+.med-patient-picker select { min-height: 44px; border: 1px solid #cbd8d3; border-radius: 12px; padding: 8px 12px; background: #fff; }
+.med-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.med-ended { margin-top: 22px; }
+.med-ended summary { cursor: pointer; font-weight: 700; margin-bottom: 12px; }
+.med-card-ended { opacity: .75; }
+
+/* ---- queue desk: check-in, tokens held, appointments, family access ---- */
+.queue-holders { margin: 14px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+.queue-holders li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; background: #eef6f3; font-size: 14px; }
+.queue-holders li span:not(.avatar) { flex: 1; font-weight: 700; }
+.queue-checkin { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; margin-top: 14px; }
+.queue-checkin label { display: grid; gap: 6px; font-weight: 700; font-size: 13px; }
+.queue-checkin select { min-height: 44px; }
+.appointment-status { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.text-btn.danger { color: #b3261e; text-decoration-color: #e3a29d; }
+.permission-list { display: grid; gap: 8px; margin: 12px 0; padding: 0; border: 0; text-align: left; }
+.permission-list legend { margin-bottom: 6px; font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #5b6f6b; }
+.permission-list:disabled { opacity: .5; }
+.family-access-off { background: #faf3f2; }
+.med-mini-summary { margin: 0 0 8px; color: #5b6f6b; font-size: 13px; font-weight: 700; }
+@media (max-width: 560px) { .queue-checkin { grid-template-columns: 1fr; } .appointment-status { justify-content: flex-start; } }
+.appointments-table > .table-head, .appointment-row { grid-template-columns: .9fr 1.5fr .8fr 1.3fr; }
+.dept-node footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.dept-node footer .icon-btn { width: 32px; height: 32px; }

@@ -1,5 +1,9 @@
 export const DEMO_PASSWORD = 'care123'
 
+// Demo dates follow the real calendar, so "today's" appointment is always today.
+const dayOffset = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
+const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString()
+
 export const seedData = {
   hospitals: [
     { id: 'h1', name: 'Sanjeevani Multispeciality Hospital', code: 'SMH', city: 'Chennai', type: 'Tertiary care', beds: 420, status: 'active', deanId: 'u-dean', color: '#138F84' },
@@ -28,8 +32,8 @@ export const seedData = {
     { id: 'p2', userId: 'u-priya', hospitalId: 'h1', mrn: 'SMH-20496', dob: '1998-11-02', bloodGroup: 'O+', doctorIds: ['u-arjun'], familyLinks: [], allergies: [], conditions: ['Knee rehabilitation'] },
   ],
   queues: [
-    { id: 'q1', hospitalId: 'h1', departmentId: 'd-card', doctorId: 'u-meera', serving: 20, lastIssued: 28, avgMinutes: 5, paused: false, updatedAt: '2026-10-13T15:55:00.000Z' },
-    { id: 'q2', hospitalId: 'h1', departmentId: 'd-ortho', doctorId: 'u-arjun', serving: 8, lastIssued: 14, avgMinutes: 7, paused: false, updatedAt: '2026-10-13T15:52:00.000Z' },
+    { id: 'q1', hospitalId: 'h1', departmentId: 'd-card', doctorId: 'u-meera', serving: 20, lastIssued: 28, avgMinutes: 5, paused: false, updatedAt: minutesAgo(5) },
+    { id: 'q2', hospitalId: 'h1', departmentId: 'd-ortho', doctorId: 'u-arjun', serving: 8, lastIssued: 14, avgMinutes: 7, paused: false, updatedAt: minutesAgo(8) },
   ],
   tokens: [
     { id: 't1', queueId: 'q1', patientId: 'p1', number: 25, status: 'waiting', createdAt: '2026-10-13T12:10:00.000Z' },
@@ -49,8 +53,8 @@ export const seedData = {
     { id: 'c1', patientId: 'p1', text: 'I’m okay', priority: 'normal', status: 'acknowledged', createdAt: '2026-10-13T10:30:00.000Z', acknowledgedBy: 'u-ravi' },
   ],
   appointments: [
-    { id: 'a1', patientId: 'p1', doctorId: 'u-meera', hospitalId: 'h1', departmentId: 'd-card', date: '2026-10-13', time: '16:30', status: 'checked-in' },
-    { id: 'a2', patientId: 'p2', doctorId: 'u-arjun', hospitalId: 'h1', departmentId: 'd-ortho', date: '2026-10-14', time: '10:00', status: 'scheduled' },
+    { id: 'a1', patientId: 'p1', doctorId: 'u-meera', hospitalId: 'h1', departmentId: 'd-card', date: dayOffset(0), time: '16:30', status: 'checked-in' },
+    { id: 'a2', patientId: 'p2', doctorId: 'u-arjun', hospitalId: 'h1', departmentId: 'd-ortho', date: dayOffset(1), time: '10:00', status: 'scheduled' },
   ],
   notifications: [
     { id: 'n-seed-1', message: 'Complete blood count was shared with your family caregiver.', recipientIds: ['u-ananya'], page: 'records', type: 'record', createdAt: '2026-10-13T15:48:00.000Z', readBy: [] },

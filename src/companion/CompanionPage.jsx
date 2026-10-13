@@ -13,6 +13,8 @@ import { SPEECH_LANG, detectLanguage, localize } from './language'
 import { useCamera } from './useCamera'
 import { useThermal } from './useThermal'
 import { loadMoodModel } from './mood'
+import { localDate } from '../careFlow'
+import { isActive } from '../medminder'
 import { LLM_DEFAULTS, askGemma, buildSystemPrompt, checkGemma, warmGemma } from './llm'
 import { CLASSIFIER_DEFAULTS, checkClassifier, classifyRemote } from './remoteModel'
 import { EMPTY_COMPANION, mergeProfile } from './config'
@@ -37,7 +39,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const stored = data.companion?.[patient.id]
   const state = useMemo(() => ({ ...EMPTY, ...stored }), [stored])
   const profile = useMemo(() => mergeProfile(state.profile), [state.profile])
-  const meds = useMemo(() => data.medications.filter(m => m.patientId === patient.id), [data.medications, patient.id])
+  const meds = useMemo(() => data.medications.filter(m => m.patientId === patient.id && isActive(m)), [data.medications, patient.id])
   const records = useMemo(() => data.records.filter(r => r.patientId === patient.id), [data.records, patient.id])
   const hospital = data.hospitals.find(h => h.id === patient.hospitalId)
   const linkedContacts = patient.familyLinks.filter(link => link.status === 'approved').map(link => data.users.find(person => person.id === link.userId)).filter(person => person?.phone).map(person => ({ id: person.id, name: person.name, phone: person.phone, role: 'family' }))
@@ -222,7 +224,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     update(c => ({ ...c, moods: [...c.moods, { mood: analysis.mood, confidence: analysis.moodConfidence, level: analysis.level, voice: voiceResult?.status || null, at: new Date().toISOString() }].slice(-60) }))
     if (analysis.intent === 'medicine-taken') {
       const target = L.meds.find(m => m.status !== 'taken')
-      if (target) setData(d => ({ ...d, medications: d.medications.map(m => (m.id === target.id ? { ...m, status: 'taken' } : m)) }))
+      if (target) setData(d => ({ ...d, medications: d.medications.map(m => (m.id === target.id ? { ...m, status: 'taken', statusDate: localDate() } : m)) }))
     }
     const assessment = assess({ utterance: text, prediction, llm: gemma ? analysis : null, voice: voiceResult, missedCheckins: 0 })
     // A worrying voice alerts the family AND the doctor (and Asha tells the patient she is doing so).

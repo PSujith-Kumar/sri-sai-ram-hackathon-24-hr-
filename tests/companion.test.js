@@ -350,3 +350,14 @@ describe('motion analysis', () => {
     expect(run([[0, 60000], [0, 125000], [0, 130000]])).toEqual(['inactive'])
   })
 })
+
+describe('greeting intent', () => {
+  it('a bare greeting is a greeting, a greeting plus a statement is not', async () => {
+    const { detectIntent, detectMood } = await import('../src/companion/brain')
+    expect(detectIntent('hello')).toBe('greeting')
+    expect(detectIntent('Hello Asha')).toBe('greeting')
+    expect(detectIntent('good morning!')).toBe('greeting')
+    expect(detectIntent('Hello, I feel a bit tired today')).toBe('chat')
+    expect(detectMood('Hello, I feel a bit tired today')).toBe('tired')
+  })
+})

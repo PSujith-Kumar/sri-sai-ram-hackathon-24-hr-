@@ -213,8 +213,8 @@ export const accessibleHospitals = (user, data) => (user.role === 'admin' ? data
 
 export const canCreateUsers = (actor) => ['admin', 'dean'].includes(actor?.role)
 export const canDeleteUsers = (actor) => actor?.role === 'admin'
-/** Deans may add people to their own hospital but never create administrators or other deans. */
-export const rolesActorMayCreate = (actor) => (actor?.role === 'admin' ? USER_ROLES : actor?.role === 'dean' ? ['patient', 'family', 'doctor', 'head'] : [])
+/** Doctors and heads may register patients (assigned to themselves). Deans may add people to their own hospital but never create administrators or other deans. */
+export const rolesActorMayCreate = (actor) => (actor?.role === 'admin' ? USER_ROLES : actor?.role === 'dean' ? ['patient', 'family', 'doctor', 'head'] : ['doctor', 'head'].includes(actor?.role) ? ['patient'] : [])
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -231,7 +231,7 @@ export function validateNewUser(data, form, actor) {
   const hospital = data.hospitals.find(h => h.id === form.hospitalId)
   if (role !== 'admin') {
     if (!hospital) errors.hospitalId = 'Choose a hospital.'
-    else if (actor.role === 'dean' && !actor.hospitalIds.includes(hospital.id)) errors.hospitalId = 'You can only add people to your own hospital.'
+    else if (actor.role !== 'admin' && !actor.hospitalIds.includes(hospital.id)) errors.hospitalId = 'You can only add people to your own hospital.'
   }
   if (['doctor', 'head'].includes(role)) {
     const dept = data.departments.find(d => d.id === form.departmentId)
@@ -272,6 +272,8 @@ export function createUser(data, form, actor, { id = `u${Date.now().toString(36)
   if (['doctor', 'head'].includes(role)) {
     user.departmentId = form.departmentId
     if (clean(form.specialization)) user.specialization = clean(form.specialization)
+    // every doctor gets a live queue, so patients can be checked in from day one
+    next = { ...next, queues: [...next.queues, { id: `q-${id}`, hospitalId: hospital.id, departmentId: form.departmentId, doctorId: id, serving: 0, lastIssued: 0, avgMinutes: 6, paused: false, updatedAt: new Date().toISOString() }] }
     if (role === 'head') {
       // a new head takes over only a department that has none
       next = { ...next, departments: next.departments.map(d => (d.id === form.departmentId && !data.users.some(u => u.id === d.headId && u.role === 'head') ? { ...d, headId: id } : d)) }

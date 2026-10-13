@@ -1,6 +1,24 @@
 const clean = (value) => String(value ?? '').trim()
 export const REPORT_DELETE_WINDOW_MS = 24 * 60 * 60 * 1000
 
+/** Today's date as YYYY-MM-DD in the user's own time zone (not UTC), so "today" matches their clock. */
+export const localDate = (now = new Date()) => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+/**
+ * Doses are tracked per day. A dose marked on an earlier day goes back to "unconfirmed", so yesterday's
+ * "taken" never hides today's dose. Returns the SAME array when nothing changed (cheap to compare).
+ */
+export function rolloverMedications(medications = [], today = localDate()) {
+  let changed = false
+  const next = medications.map((m) => {
+    if (m.statusDate === today) return m
+    changed = true
+    // entries created before daily tracking existed keep their status once, then follow the rule
+    return m.statusDate ? { ...m, status: 'unconfirmed', statusDate: today } : { ...m, statusDate: today }
+  })
+  return changed ? next : medications
+}
+
 export function summarizeDescription(description, maxLength = 150) {
   const text = clean(description).replace(/\s+/g, ' ')
   if (!text) return 'No clinical summary was provided.'
@@ -104,6 +122,7 @@ export function hydrateCareData(stored, seed) {
     }),
     queues: (source.queues || seed.queues || []).map(queue => ({ ...queue, updatedAt: queue.updatedAt || now })),
     notifications: Array.isArray(source.notifications) ? source.notifications : (seed.notifications || []),
+    medications: rolloverMedications(source.medications || seed.medications || []),
     // hospital maps: built-in ones plus any the admin created or edited (stored ones win)
     floorPlans: { ...(seed.floorPlans || {}), ...(source.floorPlans || {}) },
   }

@@ -54,6 +54,8 @@ export function detectMood(text = '') {
   return hit ? hit.mood : 'neutral'
 }
 
+const GREETING = /\bhello\b|\bhi\b|\bhey\b|good (morning|afternoon|evening)|namaste|namaskar|नमस्ते|vanakkam|வணக்கம்/i
+
 export function detectIntent(text = '') {
   if (/(took|taken|had|finished) (my )?(medicine|medication|tablet|pill)s?|(dawai|dawa|goli|tablet|medicine).{0,12}(le li|kha li|li hai|liya)|(दवा|दवाई|गोली).{0,12}(ले ली|खा ली|ली)|(மாத்திரை|மருந்து).{0,12}(சாப்பிட்டேன்|போட்டேன்)|maathirai.{0,12}(sapitten|pottein)/i.test(text)) return 'medicine-taken'
   if (/medicine|medication|tablet|pill|dawai|dawa|goli|दवा|दवाई|गोली|மாத்திரை|மருந்து|maathirai/i.test(text)) return 'medicine'
@@ -65,7 +67,11 @@ export function detectIntent(text = '') {
   if (/\bjoke\b|make me laugh|चुटकुला|ஜோக்/i.test(text)) return 'joke'
   if (/\b(bye|goodbye|good night|see you|talk later)\b|अलविदा|शुभ रात्रि|poitu varen|போய் வருகிறேன்/i.test(text)) return 'goodbye'
   if (/thank|shukriya|dhanyavad|धन्यवाद|शुक्रिया|nandri|நன்றி/i.test(text)) return 'thanks'
-  if (/\bhello\b|\bhi\b|\bhey\b|good (morning|afternoon|evening)|namaste|namaskar|नमस्ते|vanakkam|வணக்கம்/i.test(text)) return 'greeting'
+  // a greeting is the whole message ("hello Asha"); "hello, I feel tired" is something to answer, not just greet back
+  if (GREETING.test(text)) {
+    const rest = text.replace(new RegExp(GREETING.source, 'gi'), ' ').replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean)
+    if (rest.length <= 2) return 'greeting'
+  }
   return 'chat'
 }
 
