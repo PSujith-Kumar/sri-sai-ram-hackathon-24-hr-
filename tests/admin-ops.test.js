@@ -118,7 +118,7 @@ describe('adding a hospital', () => {
     const noMap = addHospital(data, hospitalForm, emptyDraft(), { actorId: admin.id })
     expect(noMap.ok).toBe(false)
     expect(noMap.mapErrors.length).toBeGreaterThan(0)
-    expect(data.hospitals).toHaveLength(2)
+    expect(data.hospitals).toHaveLength(seedData.hospitals.length)
   })
 
   it('creates the hospital together with its map, and gives every administrator access', () => {
@@ -153,7 +153,7 @@ describe('adding a hospital', () => {
 
   it('shows administrators every hospital and everyone else only their own', () => {
     const data = addHospital(fresh(), hospitalForm, templateDraft('clinic'), { actorId: admin.id, id: 'h-new' }).data
-    expect(accessibleHospitals({ role: 'admin', hospitalIds: ['h1'] }, data).map(h => h.id)).toEqual(['h1', 'h2', 'h-new'])
+    expect(accessibleHospitals({ role: 'admin', hospitalIds: ['h1'] }, data).map(h => h.id)).toEqual([...seedData.hospitals.map(h => h.id), 'h-new'])
     expect(accessibleHospitals({ role: 'doctor', hospitalIds: ['h1'] }, data).map(h => h.id)).toEqual(['h1'])
   })
 })
@@ -195,7 +195,7 @@ describe('creating a user', () => {
     const r = createUser(data, { ...base, role: 'patient', dob: '1990-05-04', bloodGroup: 'O-', doctorId: 'u-meera', allergies: 'Dust, Latex', conditions: 'Asthma' }, admin, { id: 'u-rhea' })
     expect(r.ok).toBe(true)
     expect(r.user).toMatchObject({ id: 'u-rhea', role: 'patient', patientId: 'p-rhea', initials: 'RM', title: 'Patient' })
-    expect(r.patient).toMatchObject({ userId: 'u-rhea', hospitalId: 'h1', mrn: 'SMH-20497', bloodGroup: 'O-', doctorIds: ['u-meera'], allergies: ['Dust', 'Latex'], conditions: ['Asthma'] })
+    expect(r.patient).toMatchObject({ userId: 'u-rhea', hospitalId: 'h1', mrn: 'SMH-20527', bloodGroup: 'O-', doctorIds: ['u-meera'], allergies: ['Dust', 'Latex'], conditions: ['Asthma'] })
     expect(r.data.patients.some(p => p.id === 'p-rhea')).toBe(true)
     expect(data.users.some(u => u.id === 'u-rhea')).toBe(false) // original untouched
   })
@@ -218,7 +218,7 @@ describe('creating a user', () => {
 
   it('makes a new administrator a member of every hospital', () => {
     const r = createUser(fresh(), { ...base, role: 'admin', hospitalId: '' }, admin, { id: 'u-adm2' })
-    expect(r.user.hospitalIds).toEqual(['h1', 'h2'])
+    expect(r.user.hospitalIds).toEqual(seedData.hospitals.map(h => h.id))
   })
 
   it('links a family member only when the admin confirms the patient agreed', () => {
@@ -266,7 +266,7 @@ describe('deleting a user', () => {
 
   it('tells the admin what will be affected before they confirm', () => {
     const r = describeRemoval(fresh(), 'u-meera', admin.id)
-    expect(r.impact).toMatchObject({ unassignedPatients: 1, queues: 1, waitingTokens: 1, appointments: 1 })
+    expect(r.impact).toMatchObject({ unassignedPatients: 2, queues: 1, waitingTokens: 1, appointments: 2 })
     const p = describeRemoval(fresh(), 'u-ananya', admin.id)
     expect(p.impact).toMatchObject({ patientRecord: true, records: 2, medications: 2 })
   })
@@ -276,7 +276,7 @@ describe('deleting a user', () => {
     const r = removeUser(data, 'u-ananya', admin.id)
     expect(r.ok).toBe(true)
     expect(danglingReferences(r.data, 'u-ananya', 'p1')).toEqual([])
-    expect(r.data.patients.map(p => p.id)).toEqual(['p2']) // the other patient is untouched
+    expect(r.data.patients.map(p => p.id)).toEqual(seedData.patients.filter(p => p.id !== 'p1').map(p => p.id)) // all other patients are untouched
     expect(r.data.records.every(x => x.patientId !== 'p1')).toBe(true)
     expect(r.data.records.some(x => x.patientId === 'p2')).toBe(true)
   })
@@ -285,8 +285,8 @@ describe('deleting a user', () => {
     const r = removeUser(fresh(), 'u-meera', admin.id)
     expect(danglingReferences(r.data, 'u-meera', null)).toEqual([])
     expect(r.data.patients.find(p => p.id === 'p1').doctorIds).toEqual([])
-    expect(r.data.queues.map(q => q.id)).toEqual(['q2'])
-    expect(r.data.tokens.map(t => t.id)).toEqual(['t2'])
+    expect(r.data.queues.map(q => q.id)).toEqual(seedData.queues.filter(q => q.doctorId !== 'u-meera').map(q => q.id))
+    expect(r.data.tokens.map(t => t.id)).toEqual(seedData.tokens.filter(t => t.queueId !== 'q1').map(t => t.id))
   })
 
   it('hands leadership posts to someone, never leaving a missing person in charge', () => {
@@ -299,7 +299,7 @@ describe('deleting a user', () => {
   it('deleting a family member removes only their link', () => {
     const r = removeUser(fresh(), 'u-ravi', admin.id)
     expect(r.data.patients.find(p => p.id === 'p1').familyLinks).toEqual([])
-    expect(r.data.patients).toHaveLength(2)
+    expect(r.data.patients).toHaveLength(seedData.patients.length)
     expect(danglingReferences(r.data, 'u-ravi', null)).toEqual([])
   })
 

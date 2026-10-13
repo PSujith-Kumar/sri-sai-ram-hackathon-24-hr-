@@ -15,8 +15,10 @@ describe('QueueCare', () => {
     expect(canManageQueue(ananya, q1)).toBe(false)
   })
   it('lists only patients without an active token', () => {
-    expect(patientsToCheckIn(seedData, 'q1')).toEqual([])
-    expect(patientsToCheckIn(cleared, 'q1').map(p => p.id)).toEqual(['p1', 'p2'])
+    const idle = (d) => patientsToCheckIn(d, 'q1').map(p => p.id)
+    expect(idle(seedData)).not.toContain('p1')
+    expect(idle(cleared)).toEqual(expect.arrayContaining(['p1', 'p2']))
+    expect(idle(cleared).length).toBeGreaterThan(idle(seedData).length)
   })
   it('issues the next token number and tells the patient and family', () => {
     const r = issueToken(cleared, 'q1', 'p1', meera)

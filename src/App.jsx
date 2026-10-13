@@ -5,7 +5,7 @@ import {
   LockKeyhole, LogOut, Map, Menu, Network, Pill, Plus, Printer, Route, Search, ShieldCheck, Stethoscope,
   Settings2, Sparkles, Trash2, UserCog, UserRoundCheck, UsersRound, X, Zap,
 } from 'lucide-react'
-import { DEMO_PASSWORD, demoAccounts, floorPlans, roleLabels, seedData } from './data'
+import { DEMO_DATA_VERSION, DEMO_PASSWORD, demoAccounts, floorPlans, roleLabels, seedData } from './data'
 import { Badge, Card, Empty, Modal, PageTitle } from './ui'
 import { Avatar, Stat, addressName, classNames, fmtDate, fmtTime, greeting } from './shared'
 import QueuePage from './pages/QueuePage'
@@ -26,7 +26,7 @@ import RouteAnalysisCard from './RouteAnalysisCard'
 import CompanionSettingsPage from './companion/CompanionSettings'
 import { addNotification, createHealthRecord, filterHealthRecords, healthRecordDeletionPolicy, hydrateCareData, localDate, queueRecipientIds, rolloverMedications } from './careFlow'
 
-const DATA_KEY = 'carebridge-react-v3'
+const DATA_KEY = `carebridge-react-v${DEMO_DATA_VERSION}`
 const SESSION_KEY = 'carebridge-session-v3'
 const cloneSeed = () => JSON.parse(JSON.stringify({ ...seedData, floorPlans }))
 const formatRemainingWindow = (milliseconds) => {
@@ -207,6 +207,7 @@ function Dashboard({ data, setData, user, hospital, patients, setPage, notify })
 function AdminDashboard({ data, hospital, setPage }) {
   const hospitalDepts=data.departments.filter(d=>d.hospitalId===hospital.id), hospitalUsers=data.users.filter(u=>u.hospitalIds.includes(hospital.id)), hp=data.patients.filter(p=>p.hospitalId===hospital.id)
   return <><PageTitle eyebrow="NETWORK CONTROL CENTER" title="A clear view across every hospital." text="Manage governance, people, departments and care operations from one connected system." actions={<button className="btn btn-secondary" onClick={()=>window.print()}><Printer/> Print summary</button>}/>
+    <div className="demo-data-strip" role="status"><Database/><span><b>Demo dataset ready</b><small>{data.hospitals.length} hospitals · {data.users.length} people · {data.patients.length} patients · {data.records.length} reports · {data.medications.length} medicines</small></span><Badge tone="mint">Fictional test data</Badge></div>
     <div className="stat-grid"><Stat icon={Building2} label="Hospitals" value={data.hospitals.length} detail="Across the CareBridge network"/><Stat icon={Network} label="Departments" value={data.departments.length} detail={`${hospitalDepts.length} in selected hospital`} tone="blue"/><Stat icon={Stethoscope} label="Clinical staff" value={hospitalUsers.filter(u=>['doctor','head','dean'].includes(u.role)).length} detail="Active role assignments" tone="coral"/><Stat icon={CircleUserRound} label="Patients" value={data.patients.length} detail={`${hp.length} at ${hospital.code}`} tone="gold"/></div>
     <div className="dashboard-grid"><Card className="network-card"><div className="card-head"><div><p className="eyebrow">HOSPITAL NETWORK</p><h2>Facilities at a glance</h2></div><button className="text-btn" onClick={()=>setPage('hospitals')}>Manage all <ArrowRight/></button></div><div className="hospital-list">{data.hospitals.map(h=><article key={h.id}><span className="hospital-monogram" style={{background:h.color}}>{h.code}</span><div><b>{h.name}</b><small>{h.city} · {h.type}</small></div><div className="hospital-metrics"><span><b>{data.departments.filter(d=>d.hospitalId===h.id).length}</b> departments</span><span><b>{h.beds}</b> beds</span></div><Badge tone="green">Active</Badge></article>)}</div></Card>
       <Card className="hierarchy-preview"><div className="card-head"><div><p className="eyebrow">GOVERNANCE</p><h2>Hospital hierarchy</h2></div><button className="text-btn" onClick={()=>setPage('organization')}>Open chart <ArrowRight/></button></div><div className="mini-tree"><div className="tree-person dean"><Avatar user={data.users.find(u=>u.id===hospital.deanId)}/><span><small>Hospital dean</small><b>{data.users.find(u=>u.id===hospital.deanId)?.name}</b></span></div><i></i><div className="mini-heads">{hospitalDepts.slice(0,3).map(d=><span key={d.id}><b>{d.name}</b><small>{data.users.find(u=>u.id===d.headId)?.name}</small></span>)}</div></div></Card></div>

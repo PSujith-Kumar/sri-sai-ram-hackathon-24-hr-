@@ -19,7 +19,7 @@ describe('doctor adds patients', () => {
     expect(p.hospitalId).toBe('h1')
     expect(p.conditions).toEqual(['Asthma'])
     expect(r.data.notifications[0].recipientIds).toEqual([r.user.id])
-    expect(seedData.patients).toHaveLength(2)
+    expect(r.data.patients).toHaveLength(seedData.patients.length + 1)
   })
   it('rejects invalid input and duplicate email', () => {
     expect(registerPatient(seedData, { ...form, name: '' }, meera).errors.name).toBeTruthy()
@@ -48,6 +48,6 @@ describe('new doctors get a queue', () => {
     const r = createUser(seedData, { role: 'doctor', name: 'Dr. Lena Park', email: 'lena@example.com', hospitalId: 'h1', departmentId: 'd-card' }, admin, { id: 'unew' })
     expect(r.ok).toBe(true)
     expect(r.data.queues.find(q => q.doctorId === 'unew')).toMatchObject({ hospitalId: 'h1', departmentId: 'd-card', serving: 0, lastIssued: 0, paused: false })
-    expect(seedData.queues).toHaveLength(2)
+    expect(r.data.queues).toHaveLength(seedData.queues.length + 1)
   })
 })
