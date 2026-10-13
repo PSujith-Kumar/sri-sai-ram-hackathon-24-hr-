@@ -35,6 +35,8 @@ npm install
 npm run dev
 ```
 
+On Windows, double-click `start.bat`. It checks for Node.js and npm, installs dependencies when necessary, starts Vite, and opens the application in the default browser.
+
 Create a production build with `npm run build`.
 
 ## Data and safety
