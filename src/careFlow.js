@@ -1,4 +1,5 @@
 const clean = (value) => String(value ?? '').trim()
+const arrayOr = (value, fallback = []) => (Array.isArray(value) ? value : (Array.isArray(fallback) ? fallback : []))
 export const REPORT_DELETE_WINDOW_MS = 24 * 60 * 60 * 1000
 
 /** Today's date as YYYY-MM-DD in the user's own time zone (not UTC), so "today" matches their clock. */
@@ -104,11 +105,49 @@ export function queueRecipientIds(data, queueId, actingUserId) {
 export function hydrateCareData(stored, seed) {
   const source = stored && typeof stored === 'object' ? stored : seed
   const now = new Date().toISOString()
+  const seedPatients = arrayOr(seed.patients)
+  const patients = arrayOr(source.patients, seedPatients).map(patient => {
+    const seeded = seedPatients.find(item => item.id === patient.id) || {}
+    const merged = { ...seeded, ...patient }
+    const seededLinks = arrayOr(seeded.familyLinks)
+    return {
+      ...merged,
+      doctorIds: arrayOr(merged.doctorIds, seeded.doctorIds),
+      allergies: arrayOr(merged.allergies, seeded.allergies),
+      conditions: arrayOr(merged.conditions, seeded.conditions),
+      familyLinks: arrayOr(merged.familyLinks, seededLinks).map(link => {
+        const seededLink = seededLinks.find(item => item.userId === link.userId) || {}
+        const next = { ...seededLink, ...link }
+        return { ...next, permissions: arrayOr(next.permissions, seededLink.permissions) }
+      }),
+    }
+  })
+  const seedCompanion = seed.companion && typeof seed.companion === 'object' ? seed.companion : {}
+  const sourceCompanion = source.companion && typeof source.companion === 'object' ? source.companion : seedCompanion
+  const companion = Object.fromEntries(Object.entries(sourceCompanion).map(([patientId, value]) => {
+    const seeded = seedCompanion[patientId] || {}
+    const saved = value && typeof value === 'object' ? value : {}
+    const merged = { ...seeded, ...saved }
+    return [patientId, {
+      ...merged,
+      profile: { ...(seeded.profile || {}), ...(saved.profile || {}) },
+      moods: arrayOr(merged.moods, seeded.moods),
+      events: arrayOr(merged.events, seeded.events).map(event => ({ ...event, reasons: arrayOr(event.reasons) })),
+      relayQueue: arrayOr(merged.relayQueue, seeded.relayQueue).map(item => ({ ...item, reasons: arrayOr(item.reasons) })),
+      memory: arrayOr(merged.memory, seeded.memory),
+      learning: { ...(seeded.learning || {}), ...(saved.learning || {}) },
+    }]
+  }))
   return {
     ...seed,
     ...source,
-    users: (source.users || seed.users || []).map(user => ({ ...(seed.users || []).find(seedUser => seedUser.id === user.id), ...user })),
-    records: (source.records || seed.records || []).map(record => {
+    users: arrayOr(source.users, seed.users).map(user => {
+      const seeded = arrayOr(seed.users).find(seedUser => seedUser.id === user.id) || {}
+      const merged = { ...seeded, ...user }
+      return { ...merged, hospitalIds: arrayOr(merged.hospitalIds, seeded.hospitalIds) }
+    }),
+    patients,
+    records: arrayOr(source.records, seed.records).map(record => {
       const description = clean(record.description) || `${record.type} issued by ${record.hospital}. Open the report to review the saved details.`
       const legacyDate = record.date ? new Date(`${record.date}T12:00:00.000Z`) : new Date(0)
       const createdAt = record.createdAt || (Number.isFinite(legacyDate.getTime()) ? legacyDate.toISOString() : new Date(0).toISOString())
@@ -120,9 +159,19 @@ export function hydrateCareData(stored, seed) {
         createdAt,
       }
     }),
-    queues: (source.queues || seed.queues || []).map(queue => ({ ...queue, updatedAt: queue.updatedAt || now })),
-    notifications: Array.isArray(source.notifications) ? source.notifications : (seed.notifications || []),
-    medications: rolloverMedications(source.medications || seed.medications || []),
+    queues: arrayOr(source.queues, seed.queues).map(queue => ({ ...queue, updatedAt: queue.updatedAt || now })),
+    notifications: arrayOr(source.notifications, seed.notifications).map(item => ({
+      ...item,
+      recipientIds: arrayOr(item.recipientIds),
+      readBy: arrayOr(item.readBy),
+    })),
+    medications: rolloverMedications(arrayOr(source.medications, seed.medications)),
+    hospitalAlerts: arrayOr(source.hospitalAlerts, seed.hospitalAlerts).map(alert => {
+      const seeded = arrayOr(seed.hospitalAlerts).find(item => item.id === alert.id) || {}
+      const merged = { ...seeded, ...alert }
+      return { ...merged, reasons: arrayOr(merged.reasons, seeded.reasons) }
+    }),
+    companion,
     // hospital maps: built-in ones plus any the admin created or edited (stored ones win)
     floorPlans: { ...(seed.floorPlans || {}), ...(source.floorPlans || {}) },
   }

@@ -1,5 +1,5 @@
 export const DEMO_PASSWORD = 'care123'
-export const DEMO_DATA_VERSION = 4
+export const DEMO_DATA_VERSION = 5
 
 // Demo dates follow the real calendar, so "today's" appointment is always today.
 const dayOffset = (days) => { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` }
