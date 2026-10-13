@@ -1,4 +1,5 @@
 const clean = (value) => String(value ?? '').trim()
+export const REPORT_DELETE_WINDOW_MS = 24 * 60 * 60 * 1000
 
 export function summarizeDescription(description, maxLength = 150) {
   const text = clean(description).replace(/\s+/g, ' ')
@@ -8,7 +9,7 @@ export function summarizeDescription(description, maxLength = 150) {
   return summary.length <= maxLength ? summary : `${summary.slice(0, maxLength - 1).trimEnd()}…`
 }
 
-export function createHealthRecord({ values, patientId, createdBy, id = `r${Date.now()}` }) {
+export function createHealthRecord({ values, patientId, createdBy, id = `r${Date.now()}`, createdAt = new Date().toISOString() }) {
   const description = clean(values.description)
   return {
     id,
@@ -21,7 +22,28 @@ export function createHealthRecord({ values, patientId, createdBy, id = `r${Date
     summary: clean(values.summary) || summarizeDescription(description),
     sharedWithFamily: Boolean(values.sharedWithFamily),
     createdBy,
-    createdAt: new Date().toISOString(),
+    createdAt,
+  }
+}
+
+export function healthRecordDeletionPolicy(record, userId, now = Date.now()) {
+  if (!record || record.createdBy !== userId) {
+    return { allowed: false, reason: 'creator-only', expiresAt: null, remainingMs: 0 }
+  }
+
+  const createdAtMs = new Date(record.createdAt).getTime()
+  const nowMs = now instanceof Date ? now.getTime() : typeof now === 'number' ? now : new Date(now).getTime()
+  if (!Number.isFinite(createdAtMs) || !Number.isFinite(nowMs)) {
+    return { allowed: false, reason: 'expired', expiresAt: null, remainingMs: 0 }
+  }
+
+  const expiresAtMs = createdAtMs + REPORT_DELETE_WINDOW_MS
+  const remainingMs = Math.max(0, expiresAtMs - nowMs)
+  return {
+    allowed: remainingMs > 0,
+    reason: remainingMs > 0 ? 'allowed' : 'expired',
+    expiresAt: new Date(expiresAtMs).toISOString(),
+    remainingMs,
   }
 }
 
@@ -69,7 +91,15 @@ export function hydrateCareData(stored, seed) {
     ...source,
     records: (source.records || seed.records || []).map(record => {
       const description = clean(record.description) || `${record.type} issued by ${record.hospital}. Open the report to review the saved details.`
-      return { ...record, description, summary: clean(record.summary) || summarizeDescription(description) }
+      const legacyDate = record.date ? new Date(`${record.date}T12:00:00.000Z`) : new Date(0)
+      const createdAt = record.createdAt || (Number.isFinite(legacyDate.getTime()) ? legacyDate.toISOString() : new Date(0).toISOString())
+      return {
+        ...record,
+        description,
+        summary: clean(record.summary) || summarizeDescription(description),
+        createdBy: record.createdBy || 'system',
+        createdAt,
+      }
     }),
     queues: (source.queues || seed.queues || []).map(queue => ({ ...queue, updatedAt: queue.updatedAt || now })),
     notifications: Array.isArray(source.notifications) ? source.notifications : (seed.notifications || []),

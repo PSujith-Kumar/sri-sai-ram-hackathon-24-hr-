@@ -8,7 +8,7 @@ import {
 import { DEMO_PASSWORD, demoAccounts, floorPlans, roleLabels, seedData } from './data'
 import { Badge, Card, Empty, PageTitle } from './ui'
 import CompanionPage from './companion/CompanionPage'
-import { addNotification, createHealthRecord, filterHealthRecords, hydrateCareData, queueRecipientIds } from './careFlow'
+import { addNotification, createHealthRecord, filterHealthRecords, healthRecordDeletionPolicy, hydrateCareData, queueRecipientIds } from './careFlow'
 
 const DATA_KEY = 'carebridge-react-v3'
 const SESSION_KEY = 'carebridge-session-v3'
@@ -23,6 +23,12 @@ const relativeTime = (value, now = Date.now()) => {
   if (seconds < 60) return `${seconds}s ago`
   const minutes = Math.floor(seconds / 60)
   return minutes < 60 ? `${minutes}m ago` : `${Math.floor(minutes / 60)}h ago`
+}
+const formatRemainingWindow = (milliseconds) => {
+  const totalMinutes = Math.max(1, Math.ceil(milliseconds / 60000))
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return hours ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
 function useStoredData() {
@@ -280,11 +286,14 @@ function ClinicCompassPage({data,hospitalId,setHospitalId,user}){const[hid,setHi
 function RecordsPage({data,setData,user,patients,notify}) {
   const [open,setOpen]=useState(false)
   const [selected,setSelected]=useState(null)
+  const [deleteTarget,setDeleteTarget]=useState(null)
   const [search,setSearch]=useState('')
   const patientIds=patients.map(patient=>patient.id)
   const isFamily=user.role==='family'
   const records=filterHealthRecords(data.records,{patientIds,familyOnly:isFamily,query:search})
   const patient=patients[0]
+  const selectedPolicy=selected?healthRecordDeletionPolicy(selected,user.id):null
+  const selectedCreator=selected?data.users.find(item=>item.id===selected.createdBy):null
   const add=event=>{
     event.preventDefault()
     if(!patient)return
@@ -299,10 +308,18 @@ function RecordsPage({data,setData,user,patients,notify}) {
     const familyRecipients=record.sharedWithFamily?patient.familyLinks.filter(link=>link.status==='approved'&&link.permissions.includes('records')).map(link=>link.userId):[]
     notify(record.sharedWithFamily?'Report saved and shared with approved family':'Private report saved',{recipientIds:[user.id,...familyRecipients],page:'records',type:'record'})
   }
+  const confirmDelete=()=>{
+    const policy=healthRecordDeletionPolicy(deleteTarget,user.id)
+    if(!policy.allowed){setDeleteTarget(null);notify(policy.reason==='creator-only'?'Only the report creator can delete it.':'The 24-hour deletion window has closed.',{persist:false});return}
+    setData(current=>({...current,records:current.records.filter(record=>record.id!==deleteTarget.id)}))
+    setDeleteTarget(null)
+    notify('Report deleted successfully',{persist:false})
+  }
   return <><PageTitle eyebrow="HEALTHSTORY" title={isFamily?'Shared health reports':'Your health timeline'} text={isFamily?'Open reports the patient explicitly shared with you.':'Add complete reports with a clear description and optional family sharing.'} actions={!isFamily&&<button className="btn btn-primary" onClick={()=>setOpen(true)}><Plus/> Add report</button>}/>
     <Card><div className="table-toolbar"><label className="search-box"><Search/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search title, hospital or description" aria-label="Search health reports"/></label><Badge>{records.length} reports</Badge></div><div className="record-list">{records.length?records.map(record=><article key={record.id}><span className="record-icon"><FileHeart/></span><div className="record-copy"><Badge tone="blue">{record.type}</Badge><h2>{record.title}</h2><p className="record-hospital">{record.hospital}</p><p className="record-summary">{record.summary}</p></div><span className="record-date"><b>{fmtDate(record.date)}</b>{record.sharedWithFamily&&<small><HeartHandshake/> Shared with family</small>}</span><button className="btn btn-secondary record-open" onClick={()=>setSelected(record)} aria-label={`View report ${record.title}`}><FileText/> View report</button></article>):<Empty title="No matching reports" text={isFamily?'Only reports shared by the patient appear here.':'Add a report or try another search.'}/>}</div></Card>
     <Modal open={open} onClose={()=>setOpen(false)} eyebrow="HEALTHSTORY" title="Add a health report"><form className="form-stack" onSubmit={add}><label>Report title<input name="title" required placeholder="Example: Cardiology follow-up"/></label><label>Hospital<input name="hospital" defaultValue="Sanjeevani Multispeciality Hospital" required/></label><div className="form-grid"><label>Report type<select name="type"><option>Lab report</option><option>Prescription</option><option>Scan</option><option>Discharge summary</option><option>Consultation note</option></select></label><label>Date<input name="date" type="date" defaultValue={new Date().toISOString().slice(0,10)} required/></label></div><label>Report description<textarea name="description" rows="5" minLength="20" required placeholder="Describe the findings, instructions and follow-up in clear language."/><small className="field-help">Required · family members will see this only when sharing is enabled.</small></label><label>Short summary <small>(optional)</small><textarea name="summary" rows="2" maxLength="180" placeholder="Leave blank to generate a summary from the description."/></label><label className="checkbox-label"><input name="share" type="checkbox"/> Share this report and description with approved family</label><button className="btn btn-primary" type="submit">Save report</button></form></Modal>
-    <Modal open={Boolean(selected)} onClose={()=>setSelected(null)} eyebrow="HEALTH REPORT" title={selected?.title || 'Report details'}>{selected&&<div className="report-view"><div className="report-meta"><Badge tone="blue">{selected.type}</Badge><span><CalendarDays/> {fmtDate(selected.date)}</span>{selected.sharedWithFamily&&<span><HeartHandshake/> Family access enabled</span>}</div><section><p className="eyebrow">SUMMARY</p><h3>{selected.summary}</h3></section><section><p className="eyebrow">FULL DESCRIPTION</p><p>{selected.description}</p></section><footer><span><Hospital/>{selected.hospital}</span><span><ShieldCheck/>{isFamily?'Shared by the patient':'Patient-controlled record'}</span></footer><button className="btn btn-secondary" onClick={()=>window.print()}><Printer/> Print report</button></div>}</Modal>
+    <Modal open={Boolean(selected)} onClose={()=>setSelected(null)} eyebrow="HEALTH REPORT" title={selected?.title || 'Report details'}>{selected&&<div className="report-view"><div className="report-meta"><Badge tone="blue">{selected.type}</Badge><span><CalendarDays/> {fmtDate(selected.date)}</span>{selected.sharedWithFamily&&<span><HeartHandshake/> Family access enabled</span>}</div><section><p className="eyebrow">SUMMARY</p><h3>{selected.summary}</h3></section><section><p className="eyebrow">FULL DESCRIPTION</p><p>{selected.description}</p></section><footer><span><Hospital/>{selected.hospital}</span><span><ShieldCheck/>{isFamily?'Shared by the patient':'Patient-controlled record'}</span></footer><div className={classNames('deletion-policy',selectedPolicy.allowed&&'active')}><ShieldCheck/><span><b>{selectedPolicy.allowed?`Delete available for ${formatRemainingWindow(selectedPolicy.remainingMs)}`:selectedPolicy.reason==='creator-only'?`Only ${selectedCreator?.name || 'the report creator'} can delete this report`:'The 24-hour deletion window has closed'}</b><small>Reports can only be deleted by their creator during the first 24 hours.</small></span></div><div className="report-actions"><button className="btn btn-secondary" onClick={()=>window.print()}><Printer/> Print report</button>{selectedPolicy.allowed&&<button className="btn btn-danger" onClick={()=>{setDeleteTarget(selected);setSelected(null)}}><Trash2/> Delete report</button>}</div></div>}</Modal>
+    <Modal open={Boolean(deleteTarget)} onClose={()=>setDeleteTarget(null)} eyebrow="CONFIRM DELETION" title="Delete this report?">{deleteTarget&&<div className="delete-confirmation"><span><Trash2/></span><p><b>{deleteTarget.title}</b> will be permanently removed from the patient timeline. This action cannot be undone.</p><div><button className="btn btn-secondary" onClick={()=>setDeleteTarget(null)}>Keep report</button><button className="btn btn-danger" onClick={confirmDelete}><Trash2/> Delete permanently</button></div></div>}</Modal>
   </>
 }
 

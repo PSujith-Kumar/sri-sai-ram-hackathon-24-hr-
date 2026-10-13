@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addNotification, createHealthRecord, filterHealthRecords, hydrateCareData, queueRecipientIds, summarizeDescription } from '../src/careFlow'
+import { addNotification, createHealthRecord, filterHealthRecords, healthRecordDeletionPolicy, hydrateCareData, queueRecipientIds, summarizeDescription } from '../src/careFlow'
 
 describe('connected health records', () => {
   it('creates a report with a description and generated summary', () => {
@@ -7,6 +7,7 @@ describe('connected health records', () => {
       patientId: 'p1',
       createdBy: 'u-ananya',
       id: 'r-new',
+      createdAt: '2026-10-13T10:00:00.000Z',
       values: {
         title: 'Blood pressure review', hospital: 'Sanjeevani', type: 'Consultation note', date: '2026-10-13',
         description: 'Blood pressure remained stable during the visit. Continue the existing monitoring plan.',
@@ -16,6 +17,14 @@ describe('connected health records', () => {
     expect(record.description).toContain('remained stable')
     expect(record.summary).toBe('Blood pressure remained stable during the visit.')
     expect(record.sharedWithFamily).toBe(true)
+    expect(record.createdBy).toBe('u-ananya')
+  })
+
+  it('allows only the creator to delete during the first 24 hours', () => {
+    const record = { createdBy: 'u-ananya', createdAt: '2026-10-13T10:00:00.000Z' }
+    expect(healthRecordDeletionPolicy(record, 'u-ananya', '2026-10-14T09:59:00.000Z')).toMatchObject({ allowed: true, reason: 'allowed' })
+    expect(healthRecordDeletionPolicy(record, 'u-ravi', '2026-10-13T11:00:00.000Z')).toMatchObject({ allowed: false, reason: 'creator-only' })
+    expect(healthRecordDeletionPolicy(record, 'u-ananya', '2026-10-14T10:00:00.000Z')).toMatchObject({ allowed: false, reason: 'expired' })
   })
 
   it('shows family only the records explicitly shared with them', () => {
@@ -32,6 +41,8 @@ describe('connected health records', () => {
     const hydrated = hydrateCareData({ records: [{ id: 'r1', type: 'Scan', hospital: 'Demo Hospital' }], queues: [] }, seed)
     expect(hydrated.records[0].description).toContain('Scan issued by Demo Hospital')
     expect(hydrated.records[0].summary).toBeTruthy()
+    expect(hydrated.records[0].createdBy).toBe('system')
+    expect(hydrated.records[0].createdAt).toBe('1970-01-01T00:00:00.000Z')
   })
 })
 
