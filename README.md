@@ -1,31 +1,45 @@
-# CareBridge
+# CareBridge 3.0
 
-CareBridge is an integrated healthcare-assistance prototype created for the Sairam VERDICT 24-hour hackathon. It connects hospital queue tracking, indoor navigation, personal health-record organization, caregiver coordination, medication schedules, well-being reflection, and low-data access in one responsive web application.
+CareBridge is a connected, multi-hospital healthcare-assistance prototype created for the Sairam VERDICT hackathon. The React application gives network administrators, hospital deans, department heads, specialist doctors, patients, and approved family caregivers separate role-based workspaces backed by one shared demonstration data model.
 
 ## Features
 
-- **QueueCare:** Digital tokens, live queue progress, rolling wait estimates, and staff controls.
-- **CareClue:** Shortest-path hospital navigation with wheelchair-accessible routing.
-- **HealthStory:** Searchable medical-record timeline with optional local document attachments.
-- **CareCircle:** Patient check-ins, assistance requests, caregiver acknowledgements, permissions, and patient-controlled camera access.
-- **MedMinder:** Medication schedule and dose-status history based on user-entered prescriptions.
-- **MindMate:** Private mood check-ins, a seven-day chart, and personal journaling.
-- **Low-data access:** A USSD-style simulator that reads the same queue state as QueueCare.
-- Patient, caregiver, and hospital-staff demonstration roles.
+- Multi-hospital administration and hospital switching.
+- Hospital hierarchy from network admin to dean, department heads and specialist doctors.
+- Relationship-scoped patient access: patients see themselves, doctors see assigned patients, and family members see only approved relatives.
+- **QueueCare:** Shared queue state across doctor, patient and family dashboards.
+- **CareClue:** Fictional test hospitals with shortest-path and wheelchair-accessible routing.
+- **HealthStory:** Patient-controlled medical-record timeline with family sharing controls.
+- **CareCircle:** Patient check-ins and caregiver acknowledgements.
+- **MedMinder:** Medication schedules and dose status based on existing instructions.
+- Printable visit summaries and responsive mobile layouts.
+
+## Demo accounts
+
+All accounts use password `care123`.
+
+| Role | Email |
+|---|---|
+| Network admin | `admin@carebridge.demo` |
+| Hospital dean | `dean@sanjeevani.demo` |
+| Specialist doctor | `meera@sanjeevani.demo` |
+| Patient | `ananya@carebridge.demo` |
+| Approved family caregiver | `ravi@carebridge.demo` |
 
 ## Run locally
 
-The prototype is buildless and has no package dependencies.
+Install dependencies and start Vite:
 
 ```powershell
-py -3 -m http.server 4173 --directory dist
+npm install
+npm run dev
 ```
 
-Open `http://127.0.0.1:4173` in a modern browser.
+Create a production build with `npm run build`.
 
 ## Data and safety
 
-This repository is a hackathon demonstration using fictional hospital data. Application changes are stored in browser local storage. It is not a production medical system, diagnostic tool, prescribing service, verified hospital map, or live telecom USSD integration.
+This repository is a hackathon demonstration using fictional hospitals and patients. Login and application changes are stored in browser local storage. Role and relationship checks demonstrate intended authorization behavior, but production deployment requires a secure backend, hashed credentials, server-side authorization, audit logs and encrypted medical storage.
 
 Queue times are estimates. Medication schedules are entered by the user and do not change clinical instructions. MindMate entries remain private to the browser unless the user exports or shares them independently.
 
@@ -33,4 +47,4 @@ Queue times are estimates. Medication schedules are entered by the user and do n
 
 Private preview: <https://carebridge-sairam.chummy-tune-1523.chatgpt.site>
 
-The deployable static files are in `dist/`.
+The deployable Vite output is generated in `dist/`.
