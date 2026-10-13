@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useId, useRef } from 'react'
 import { FileText, X } from 'lucide-react'
 
 export function Badge({ children, tone = 'neutral' }) { return <span className={`badge badge-${tone}`}>{children}</span> }
@@ -9,18 +9,31 @@ export function Card({ className = '', children }) { return <section className={
 /** Dialog with Escape-to-close and focus return. `wide` is for dialogs that hold a form plus a preview (the map editor). */
 export function Modal({ open, onClose, title, eyebrow, children, wide = false }) {
   const closeButton = useRef(null)
+  const dialog = useRef(null)
+  const titleId = useId()
   useEffect(() => {
     if (!open) return undefined
     const previousFocus = document.activeElement
-    const onKeyDown = event => event.key === 'Escape' && onClose()
+    const onKeyDown = event => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
+      if (event.key !== 'Tab') return
+      const focusable = [...(dialog.current?.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])') || [])]
+      if (!focusable.length) return
+      const first = focusable[0], last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
     document.addEventListener('keydown', onKeyDown)
-    requestAnimationFrame(() => closeButton.current?.focus())
+    requestAnimationFrame(() => {
+      const initial = dialog.current?.querySelector('input:not([type="hidden"]), select, textarea') || closeButton.current
+      initial?.focus()
+    })
     return () => { document.removeEventListener('keydown', onKeyDown); previousFocus?.focus?.() }
   }, [open, onClose])
   if (!open) return null
   return <div className="modal-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && onClose()}>
-    <div className={`modal${wide ? ' modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby="modal-title">
-      <div className="modal-head"><div><p className="eyebrow">{eyebrow}</p><h2 id="modal-title">{title}</h2></div><button ref={closeButton} className="icon-btn" onClick={onClose} aria-label="Close dialog"><X/></button></div>
+    <div ref={dialog} className={`modal${wide ? ' modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <div className="modal-head"><div><p className="eyebrow">{eyebrow}</p><h2 id={titleId}>{title}</h2></div><button ref={closeButton} className="icon-btn" onClick={onClose} aria-label="Close dialog"><X/></button></div>
       <div className="modal-body">{children}</div>
     </div>
   </div>
