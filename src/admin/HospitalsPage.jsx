@@ -8,16 +8,19 @@ const EMPTY_FORM = { name: '', code: '', city: '', type: 'Community care', beds:
 const mapSummary = (plan) => (plan ? `${Object.keys(plan.nodes).length} places · ${plan.edges.length} paths` : null)
 
 /** Step 1 of the wizard: the hospital's details. */
-function DetailsStep({ form, setForm, errors }) {
-  const field = (name, label, props = {}) => <label>{label}<input value={form[name]} onChange={e => setForm({ ...form, [name]: e.target.value })} aria-invalid={Boolean(errors[name])} {...props}/>{errors[name] && <span className="field-error" role="alert">{errors[name]}</span>}</label>
-  return <div className="form-stack">
-    {field('name', 'Hospital name', { placeholder: 'Fictional hospital name', required: true })}
-    <div className="form-grid">{field('code', 'Short code', { placeholder: 'ABC', maxLength: 5, required: true })}{field('city', 'City', { placeholder: 'City', required: true })}</div>
+function DetailsStep({ form, setForm, errors, onSubmit }) {
+  const field = (name, label, { transform = (v) => v, ...props } = {}) => <label>{label}<input value={form[name]} onChange={e => setForm({ ...form, [name]: transform(e.target.value) })} aria-invalid={Boolean(errors[name])} {...props}/>{errors[name] && <span className="field-error" role="alert">{errors[name]}</span>}</label>
+  // a real form, so Enter moves on to the map step; noValidate because the errors are shown in our own style
+  return <form className="form-stack" onSubmit={(e) => { e.preventDefault(); onSubmit() }} noValidate>
+    {field('name', 'Hospital name', { placeholder: 'Fictional hospital name', maxLength: 80, autoComplete: 'off' })}
+    <div className="form-grid">{field('code', 'Short code', { placeholder: 'ABC', maxLength: 5, autoComplete: 'off', transform: (v) => v.toUpperCase().replace(/[^A-Z0-9]/g, '') })}{field('city', 'City', { placeholder: 'City', maxLength: 60, autoComplete: 'off' })}</div>
     <div className="form-grid">
       <label>Facility type<select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}><option>Tertiary care</option><option>Community care</option><option>Speciality hospital</option></select></label>
-      {field('beds', 'Beds', { type: 'number', min: 1, required: true })}
+      {field('beds', 'Beds', { type: 'number', min: 1, max: 5000, step: 1, inputMode: 'numeric' })}
     </div>
-  </div>
+    <p className="form-help">Next you will add the hospital's places and the paths between them. The map is required: patients use it to find their way.</p>
+    <div className="wizard-actions"><button className="btn btn-primary" type="submit">Next: draw the map <ArrowRight/></button></div>
+  </form>
 }
 
 /** Admin page: every hospital, its map status, and the two-step "details, then map" creation flow. */
@@ -73,11 +76,7 @@ export default function HospitalsPage({ data, setData, user, notify }) {
     <Modal open={Boolean(wizard)} onClose={() => setWizard(null)} eyebrow={wizard ? `NEW FACILITY · STEP ${wizard.step} OF 2` : ''} title={wizard?.step === 2 ? 'Draw the hospital map' : 'Add a hospital'} wide={wizard?.step === 2}>
       {wizard && <>
         <ol className="wizard-steps" aria-label="Progress"><li className={wizard.step === 1 ? 'on' : 'done'}>1 · Details</li><li className={wizard.step === 2 ? 'on' : ''}>2 · Map and paths</li></ol>
-        {wizard.step === 1 && <>
-          <DetailsStep form={wizard.form} setForm={form => setWizard(w => ({ ...w, form }))} errors={wizard.errors}/>
-          <p className="form-help">Next you will add the hospital's places and the paths between them. The map is required: patients use it to find their way.</p>
-          <div className="wizard-actions"><button className="btn btn-primary" onClick={next}>Next: draw the map <ArrowRight/></button></div>
-        </>}
+        {wizard.step === 1 && <DetailsStep form={wizard.form} setForm={form => setWizard(w => ({ ...w, form }))} errors={wizard.errors} onSubmit={next}/>}
         {wizard.step === 2 && <>
           <MapEditor draft={wizard.draft} onChange={draft => setWizard(w => ({ ...w, draft, mapErrors: [] }))} copyFrom={copyFrom}/>
           {wizard.mapErrors.length > 0 && <p className="form-error" role="alert">{wizard.mapErrors[0]}</p>}

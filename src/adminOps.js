@@ -165,12 +165,18 @@ export function validateDraft(draft) {
 
 export function validateHospitalForm(data, form) {
   const errors = {}
-  if (clean(form.name).length < 3) errors.name = 'Enter the hospital name (at least 3 characters).'
+  const name = clean(form.name)
+  if (name.length < 3) errors.name = 'Enter the hospital name (at least 3 characters).'
+  else if (name.length > 80) errors.name = 'Keep the hospital name under 80 characters.'
+  else if (data.hospitals.some(h => same(h.name, name))) errors.name = 'A hospital with this name already exists.'
   const code = clean(form.code).toUpperCase()
   if (!/^[A-Z0-9]{2,5}$/.test(code)) errors.code = 'Use 2 to 5 letters or digits.'
   else if (data.hospitals.some(h => same(h.code, code))) errors.code = `The code ${code} is already used by another hospital.`
-  if (!clean(form.city)) errors.city = 'Enter the city.'
-  if (!(Number(form.beds) >= 1)) errors.beds = 'Enter the number of beds (1 or more).'
+  const city = clean(form.city)
+  if (!city) errors.city = 'Enter the city.'
+  else if (city.length > 60) errors.city = 'Keep the city under 60 characters.'
+  const beds = Number(clean(form.beds))
+  if (!Number.isInteger(beds) || beds < 1 || beds > 5000) errors.beds = 'Enter a whole number of beds from 1 to 5000.'
   return { errors, ok: Object.keys(errors).length === 0 }
 }
 

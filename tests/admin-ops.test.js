@@ -324,3 +324,28 @@ describe('deleting a user', () => {
     expect(removed.data.patients).toEqual(data.patients)
   })
 })
+
+describe('hospital details form', () => {
+  const good = { name: 'Green Valley Hospital', code: 'gvh', city: 'Coimbatore', type: 'Community care', beds: '120' }
+  it('accepts valid details, with the code in any case', async () => {
+    const { validateHospitalForm } = await import('../src/adminOps')
+    const { seedData } = await import('../src/data')
+    expect(validateHospitalForm(seedData, good).ok).toBe(true)
+  })
+  it('rejects bed counts that are not a whole number from 1 to 5000', async () => {
+    const { validateHospitalForm } = await import('../src/adminOps')
+    const { seedData } = await import('../src/data')
+    for (const beds of ['0', '-5', '1.5', '5001', '1000000000', 'abc', '']) expect(validateHospitalForm(seedData, { ...good, beds }).errors.beds, beds).toBeTruthy()
+    for (const beds of ['1', '5000', 250]) expect(validateHospitalForm(seedData, { ...good, beds }).errors.beds, String(beds)).toBeUndefined()
+  })
+  it('rejects a duplicate name or code, and over-long text', async () => {
+    const { validateHospitalForm } = await import('../src/adminOps')
+    const { seedData } = await import('../src/data')
+    const existing = seedData.hospitals[0]
+    expect(validateHospitalForm(seedData, { ...good, name: existing.name.toUpperCase() }).errors.name).toMatch(/already exists/)
+    expect(validateHospitalForm(seedData, { ...good, code: existing.code.toLowerCase() }).errors.code).toMatch(/already used/)
+    expect(validateHospitalForm(seedData, { ...good, name: 'x'.repeat(81) }).errors.name).toMatch(/80/)
+    expect(validateHospitalForm(seedData, { ...good, city: 'y'.repeat(61) }).errors.city).toMatch(/60/)
+    expect(validateHospitalForm(seedData, { ...good, name: '  ', city: ' ' }).errors).toMatchObject({ name: expect.any(String), city: expect.any(String) })
+  })
+})
