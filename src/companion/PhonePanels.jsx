@@ -27,7 +27,7 @@ function PhoneCard({ role, url, node }) {
 }
 
 /** Setup and status for the two phones: a thermal phone and a camera phone linked over USB tethering or Wi-Fi. */
-export function PhonePanel({ link, profile, setThermalSource, setVision, llmOn, visionNote, onTestCamera, testing }) {
+export function PhonePanel({ link, profile, setThermalSource, setSensorTestMode, setVision, llmOn, visionNote, onTestCamera, testing }) {
   const links = pairingLinks(link.info, link.token)
   const [chosen, setChosen] = useState('')
   const preferred = links.find((l) => /tethering|hotspot|iPhone/.test(l.hint)) || links[0]
@@ -65,7 +65,7 @@ export function PhonePanel({ link, profile, setThermalSource, setVision, llmOn, 
         </>}
 
       <div className="form-stack cmp-form">
-        <label className="checkbox-label"><input type="checkbox" checked={usingPhones} onChange={(e) => setThermalSource(e.target.checked ? { kind: 'phone', cctvKind: 'phone' } : { kind: 'sim', cctvKind: 'webcam' })}/> Use these two phones as my sensors (instead of the simulator and this computer’s camera)</label>
+        <label className="checkbox-label"><input type="checkbox" checked={usingPhones} onChange={(e) => { const enabled = e.target.checked; setThermalSource(enabled ? { kind: 'phone', cctvKind: 'phone', alwaysOn: true } : { kind: 'sim', cctvKind: 'webcam' }); if (enabled) setSensorTestMode(true) }}/> Use these two phones as my sensors (instead of the simulator and this computer’s camera)</label>
         <label className="checkbox-label"><input type="checkbox" checked={profile.thermal.alwaysOn} onChange={(e) => setThermalSource({ alwaysOn: e.target.checked })} disabled={!usingPhones}/> Keep the thermal phone watching while AI care mode is on (it sees heat shapes only)</label>
         <label className="checkbox-label"><input type="checkbox" checked={profile.vision.enabled} onChange={(e) => setVision({ enabled: e.target.checked })}/> Let Gemma 3 look at the camera picture when it is on {!llmOn && <small>(turn on “Use Gemma 3” first)</small>}</label>
         {!profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> Enable “Allow safety sensors after no reply” in AI &amp; privacy settings first. Until then the phones stay idle.</p>}

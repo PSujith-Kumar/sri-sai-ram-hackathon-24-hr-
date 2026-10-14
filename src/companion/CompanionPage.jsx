@@ -99,20 +99,12 @@ function CompanionInner({ data, setData, user, patient, notify, setPage }) {
     setSafetySensorsActive(enabled)
     update(c => {
       const p = mergeProfile(c.profile)
-      return { ...c, profile: { ...p, sensorTestMode: enabled, thermal: enabled ? { ...p.thermal, kind: 'sim', cctvKind: 'webcam' } : p.thermal } }
+      return { ...c, profile: { ...p, sensorTestMode: enabled } }
     })
   }, [update])
   const setVision = useCallback((patch) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, vision: { ...p.vision, ...patch } } } }), [update])
   const addContact = useCallback((contact) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: [...p.contacts, { ...contact, id: uid('k') }] } } }), [update])
   const removeContact = useCallback((id) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: p.contacts.filter(k => k.id !== id) } } }), [update])
-
-  // Existing browser data may remember a hardware source. Test mode always
-  // normalises both inputs to the built-in thermal simulator and local webcam.
-  useEffect(() => {
-    if (profile.sensorTestMode && (profile.thermal.kind !== 'sim' || profile.thermal.cctvKind !== 'webcam')) {
-      setThermalSource({ kind: 'sim', cctvKind: 'webcam' })
-    }
-  }, [profile.sensorTestMode, profile.thermal.kind, profile.thermal.cctvKind, setThermalSource])
 
   const voice = useVoice({ profile, patientId: patient.id, onProblem: (code, lang) => live.current.onMicProblem?.(code, lang) })
   // The zero-hardware simulator starts with AI care mode so its controls work on the hosted demo.
@@ -486,7 +478,7 @@ function CompanionInner({ data, setData, user, patient, notify, setPage }) {
     if (!turningOn && guardRef.current.mode === GUARD_MODE.recording) await applyEffect('stop-recording', guardRef.current.reasons)
     setProfile({ autonomous: turningOn })
     lastContactRef.current = Date.now()
-    if (turningOn) await say(`Hello ${user.name.split(' ')[0]}, I'm ${companionName}. I'll be right here with you. ${profile.sensorTestMode ? 'Both-sensor test mode is active, so the thermal simulator and local camera are visible together.' : profile.sensorEscalationConsent ? 'The thermal watch can stay active, while CCTV opens only for an unusual event.' : 'The thermal simulator remains available; the real camera stays off unless you enable it.'} I'll also look after your medicines. Just talk to me any time.`)
+    if (turningOn) await say(`Hello ${user.name.split(' ')[0]}, I'm ${companionName}. I'll be right here with you. ${profile.sensorTestMode ? 'Both-sensor test mode is active, so your selected thermal and camera sources stay visible together.' : profile.sensorEscalationConsent ? 'The thermal watch can stay active, while CCTV opens only for an unusual event.' : 'The thermal simulator remains available; the real camera stays off unless you enable it.'} I'll also look after your medicines. Just talk to me any time.`)
   }
 
   const onMic = async () => {
@@ -512,7 +504,7 @@ function CompanionInner({ data, setData, user, patient, notify, setPage }) {
 
   const snapshot = buildSnapshot({ patient, records, meds, moods: state.moods, events: state.events })
   const signals = conversationSignals(messages)
-  const eyesText = profile.sensorTestMode ? 'thermal simulator and CCTV (continuous test)' : guard.mode === GUARD_MODE.thermal ? (eyes === 'live' ? 'thermal sensor only (CCTV off)' : 'not available, using voice') : 'thermal sensor and CCTV (live check)'
+  const eyesText = profile.sensorTestMode ? `${profile.thermal.kind === 'phone' ? 'thermal phone' : profile.thermal.kind === 'http' ? 'thermal gateway' : 'thermal simulator'} and ${profile.thermal.cctvKind === 'phone' ? 'camera phone' : profile.thermal.cctvKind === 'ip' ? 'IP camera' : 'this device camera'} (continuous test)` : guard.mode === GUARD_MODE.thermal ? (eyes === 'live' ? 'thermal sensor only (CCTV off)' : 'not available, using voice') : 'thermal sensor and CCTV (live check)'
 
   return <>
     <PageTitle eyebrow="AI COMPANION · PATIENT CARE" title={`${companionName} is here with you.`} text="A patient-specific companion with 30-day memory, feedback-based reply repair and consent-controlled safety escalation. Wellbeing signals support care; they never diagnose." actions={<button className={`btn ${profile.autonomous ? 'btn-dark' : 'btn-primary'}`} onClick={toggleAi}><Power/> {profile.autonomous ? 'Stop AI care mode' : 'Start AI care mode'}</button>}/>
@@ -520,7 +512,7 @@ function CompanionInner({ data, setData, user, patient, notify, setPage }) {
     <div className="cmp-grid">
       <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} onFeedback={handleFeedback} thinking={thinking} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
       <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cameraOn }, profile, setThermalSource, setSensorTestMode, scenario, setScenario, sensorLoss, setSensorLoss }} onOpenSettings={() => setPage?.('settings')}/>
-      <PhonePanel link={phoneLink} profile={profile} setThermalSource={setThermalSource} setVision={setVision} llmOn={profile.llm.enabled} visionNote={visionNote} onTestCamera={testCameraPhone} testing={testingCamera}/>
+      <PhonePanel link={phoneLink} profile={profile} setThermalSource={setThermalSource} setSensorTestMode={setSensorTestMode} setVision={setVision} llmOn={profile.llm.enabled} visionNote={visionNote} onTestCamera={testCameraPhone} testing={testingCamera}/>
       <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline} signals={signals}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
       <ModelPanel llm={profile.llm} setLlm={setLlm} status={llmStatus} onTest={testLlm} classifier={classifierOk}/>

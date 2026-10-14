@@ -214,6 +214,7 @@ describe('thermal sensor startup policy', () => {
     expect(thermalStartsWithAi({ thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
     expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: true, thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
     expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: false, thermal: { kind: 'phone', alwaysOn: true } })).toBe(false)
+    expect(thermalSensorsEnabled({ sensorTestMode: true, autonomous: false, sensorEscalationConsent: false, thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
     expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: true, thermal: { kind: 'http' } }, true)).toBe(true)
   })
 })

@@ -62,7 +62,7 @@ export const thermalStartsWithAi = (profile = {}) => {
 
 export const thermalSensorsEnabled = (profile = {}, safetySensorsActive = false) => {
   const thermal = profile.thermal || {}
-  if (thermal.kind === 'sim') return true
+  if (profile.sensorTestMode || thermal.kind === 'sim') return true
   return Boolean(
     profile.sensorEscalationConsent
     && (thermal.alwaysOn === true || (profile.autonomous && safetySensorsActive))
