@@ -28,7 +28,7 @@ function Heatmap({ frame }) {
   return <canvas ref={ref} width={frame?.width || 32} height={frame?.height || 24} className="cmp-heat" aria-label="Thermal heat map"/>
 }
 
-export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }) {
+export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss, onOpenSettings }) {
   const copy = MODE_COPY[guard.mode]
   const src = profile.thermal
   const kind = src.cctvKind
@@ -57,7 +57,7 @@ export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, 
       </div>
     </div>
     <div className="cmp-demo"><b>Demo: thermal sensor</b>{SCENARIOS.map(s => <button key={s} type="button" disabled={!simulatorReady} className={`btn btn-secondary ${scenario === s ? 'cmp-on' : ''}`} onClick={() => setScenario(s)}>{SCENARIO_LABEL[s]}</button>)}<button className="btn btn-secondary" disabled={!simulatorReady} type="button" onClick={() => setSensorLoss(!sensorLoss)}>{sensorLoss ? 'Restore sensor' : 'Simulate sensor loss'}</button></div>
-    {!profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> Enable “Allow safety sensors after no reply” in AI &amp; privacy settings before running sensor demos.</p>}
+    {!profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> <span>Enable “Allow safety sensors after no reply” before running sensor demos.</span><button className="text-btn" type="button" onClick={onOpenSettings}>Open settings</button></p>}
     {profile.sensorEscalationConsent && !profile.autonomous && <p className="cmp-consent-note"><ShieldCheck/> Start AI care mode to run the thermal sensor demo.</p>}
     {profile.sensorEscalationConsent && profile.autonomous && src.kind !== 'sim' && <p className="cmp-consent-note"><ShieldCheck/> Choose “Built-in simulator” above to run demo conditions. Connected hardware uses its real frames instead.</p>}
     <p className="cmp-note"><ShieldCheck/> Nothing is saved or shared unless something abnormal is confirmed. A thermal gateway should return JSON like <code>{'{"width":32,"height":24,"temps":[…°C]}'}</code>. Temperature flags are screening hints, not a diagnosis.</p>

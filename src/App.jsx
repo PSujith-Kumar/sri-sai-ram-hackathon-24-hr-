@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity, ArrowLeft, ArrowRight, Bell, Building2, CalendarDays, Check, ChevronDown, CircleUserRound,
   ClipboardList, Clock3, Database, FileHeart, FileText, HeartHandshake, Hospital, KeyRound, LayoutDashboard,
@@ -113,9 +113,21 @@ function visiblePatients(user, data) {
   return []
 }
 
-function Sidebar({ user, nav, page, setPage, onLogout, open, setOpen }) {
-  return <aside className={classNames('sidebar',open&&'sidebar-open')}>
-    <div className="side-brand"><span className="brand-symbol">C</span><span><b>CareBridge</b><small>Connected care</small></span><button className="side-close" onClick={()=>setOpen(false)} aria-label="Close navigation"><X/></button></div>
+function useMobileNavigation() {
+  const [mobile, setMobile] = useState(() => typeof window !== 'undefined' && window.matchMedia('(max-width: 850px)').matches)
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 850px)')
+    const update = () => setMobile(query.matches)
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+  return mobile
+}
+
+function Sidebar({ user, nav, page, setPage, onLogout, open, setOpen, mobile, closeRef }) {
+  const hidden = mobile && !open
+  return <aside id="main-navigation" className={classNames('sidebar',open&&'sidebar-open')} aria-hidden={hidden || undefined} inert={hidden}>
+    <div className="side-brand"><span className="brand-symbol">C</span><span><b>CareBridge</b><small>Connected care</small></span><button ref={closeRef} className="side-close" onClick={()=>setOpen(false)} aria-label="Close navigation"><X/></button></div>
     <div className="role-card"><Avatar user={user}/><div><small>Signed in as</small><b>{roleLabels[user.role]}</b></div><ShieldCheck/></div>
     <nav aria-label="Main navigation">{nav.map(([id,label,Icon])=><button key={id} className={page===id?'active':''} onClick={()=>{setPage(id);setOpen(false)}}><Icon aria-hidden="true"/><span>{label}</span>{page===id&&<i/>}</button>)}</nav>
     <div className="side-foot"><button onClick={onLogout}><LogOut/><span>Sign out</span></button><p><span></span>Demo system online</p></div>
@@ -126,6 +138,9 @@ function AppShell({ data, setData, user, onLogout }) {
   const [page, setPage] = useState('dashboard')
   const [sideOpen, setSideOpen] = useState(false)
   const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const mobileNavigation = useMobileNavigation()
+  const menuButton = useRef(null)
+  const closeMenuButton = useRef(null)
   const myHospitals = accessibleHospitals(user, data)
   const [hospitalId, setHospitalId] = useState(myHospitals[0]?.id || data.hospitals[0]?.id)
   const [toast, setToast] = useState('')
@@ -148,6 +163,33 @@ function AppShell({ data, setData, user, onLogout }) {
   useEffect(()=>setPage('dashboard'),[user.id])
   useEffect(()=>{ if(!nav.some(([id])=>id===page)) setPage('dashboard') },[nav,page])
   useEffect(() => {
+    if (!sideOpen || !mobileNavigation) return undefined
+    const previousOverflow = document.body.style.overflow
+    const onKeyDown = event => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setSideOpen(false)
+        return
+      }
+      if (event.key !== 'Tab') return
+      const sidebar = closeMenuButton.current?.closest('aside')
+      const focusable = [...(sidebar?.querySelectorAll('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])') || [])]
+      if (!focusable.length) return
+      const first = focusable[0], last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onKeyDown)
+    requestAnimationFrame(() => closeMenuButton.current?.focus())
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', onKeyDown)
+      menuButton.current?.focus()
+    }
+  }, [sideOpen, mobileNavigation])
+  useEffect(() => { if (!mobileNavigation) setSideOpen(false) }, [mobileNavigation])
+  useEffect(() => {
     const rollover = () => setData(d => { const meds = rolloverMedications(d.medications, localDate()); return meds === d.medications ? d : { ...d, medications: meds } })
     const timer = setInterval(rollover, 60000)
     return () => clearInterval(timer)
@@ -155,11 +197,11 @@ function AppShell({ data, setData, user, onLogout }) {
   const pageName = nav.find(x=>x[0]===page)?.[1] || 'CareBridge'
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Skip to main content</a>
-    <Sidebar user={user} nav={nav} page={page} setPage={setPage} onLogout={onLogout} open={sideOpen} setOpen={setSideOpen}/>
-    <div className="main-column"><header className="topbar"><div className="top-left"><button className="mobile-menu" onClick={()=>setSideOpen(true)} aria-label="Open navigation"><Menu/></button><div><p>{roleLabels[user.role]}</p><b>{pageName}</b></div></div><div className="top-actions">
+    <Sidebar user={user} nav={nav} page={page} setPage={setPage} onLogout={onLogout} open={sideOpen} setOpen={setSideOpen} mobile={mobileNavigation} closeRef={closeMenuButton}/>
+    <div className="main-column"><header className="topbar"><div className="top-left"><button ref={menuButton} className="mobile-menu" onClick={()=>setSideOpen(true)} aria-label="Open navigation" aria-expanded={sideOpen} aria-controls="main-navigation"><Menu/></button><div><p>{roleLabels[user.role]}</p><b>{pageName}</b></div></div><div className="top-actions">
       {myHospitals.length>1&&<label className="hospital-switch"><Hospital/><select value={hospitalId} onChange={e=>setHospitalId(e.target.value)}>{myHospitals.map(h=><option key={h.id} value={h.id}>{h.code} · {h.name}</option>)}</select></label>}
       {myHospitals.length===1&&<span className="hospital-name"><Hospital/>{hospital?.name}</span>}
-      <button className="icon-btn bell" onClick={()=>setNotificationsOpen(true)} aria-label={`Notifications, ${unreadCount} unread`} aria-haspopup="dialog"><Bell/>{unreadCount>0&&<span className="notification-count" aria-hidden="true">{Math.min(unreadCount,9)}</span>}</button><div className="profile-chip"><Avatar user={user}/><span><b>{user.name}</b><small>{user.title}</small></span></div>
+      <button className="icon-btn bell" onClick={()=>setNotificationsOpen(true)} aria-label={`Notifications, ${unreadCount} unread`} aria-haspopup="dialog" aria-expanded={notificationsOpen}><Bell/>{unreadCount>0&&<span className="notification-count" aria-hidden="true">{Math.min(unreadCount,9)}</span>}</button><div className="profile-chip"><Avatar user={user}/><span><b>{user.name}</b><small>{user.title}</small></span></div>
     </div></header>
     <main className="content" id="main-content">
       {page==='dashboard'&&<Dashboard {...{data,setData,user,hospital,patients,setPage,notify}}/>}
@@ -174,12 +216,12 @@ function AppShell({ data, setData, user, onLogout }) {
       {page==='careclue'&&<ClinicCompassPage {...{data,hospitalId,setHospitalId,user}}/>}
       {page==='records'&&<RecordsPage {...{data,setData,user,patients,notify}}/>}
       {page==='medications'&&<MedicineSchedule {...{data,setData,user,patients,notify}}/>}
-      {page==='companion'&&<CompanionPage {...{data,setData,user,patients,notify}}/>}
+      {page==='companion'&&<CompanionPage {...{data,setData,user,patients,notify,setPage}}/>}
       {page==='settings'&&<CompanionSettingsPage {...{data,setData,user,patients,notify}}/>}
       {page==='care'&&<CareCirclePage {...{data,setData,user,patients,notify}}/>}
     </main></div>
     <NotificationsPanel open={notificationsOpen} onClose={()=>setNotificationsOpen(false)} {...{data,setData,user,setPage,notifications,nav}}/>
-    {sideOpen&&<div className="side-scrim" onClick={()=>setSideOpen(false)}/>} {toast&&<div className="toast" role="status"><Check/>{toast}</div>}
+    {sideOpen&&mobileNavigation&&<div className="side-scrim" aria-hidden="true" onClick={()=>setSideOpen(false)}/>} {toast&&<div className="toast" role="status"><Check/>{toast}</div>}
   </div>
 }
 

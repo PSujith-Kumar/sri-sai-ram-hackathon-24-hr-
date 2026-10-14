@@ -14,6 +14,7 @@ export function Modal({ open, onClose, title, eyebrow, children, wide = false })
   useEffect(() => {
     if (!open) return undefined
     const previousFocus = document.activeElement
+    const previousOverflow = document.body.style.overflow
     const onKeyDown = event => {
       if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
       if (event.key !== 'Tab') return
@@ -23,12 +24,13 @@ export function Modal({ open, onClose, title, eyebrow, children, wide = false })
       if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
     }
+    document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', onKeyDown)
     requestAnimationFrame(() => {
       const initial = dialog.current?.querySelector('input:not([type="hidden"]), select, textarea') || closeButton.current
       initial?.focus()
     })
-    return () => { document.removeEventListener('keydown', onKeyDown); previousFocus?.focus?.() }
+    return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', onKeyDown); previousFocus?.focus?.() }
   }, [open, onClose])
   if (!open) return null
   return <div className="modal-backdrop" role="presentation" onMouseDown={e => e.target === e.currentTarget && onClose()}>

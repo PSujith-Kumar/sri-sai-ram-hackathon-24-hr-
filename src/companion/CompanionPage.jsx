@@ -36,13 +36,13 @@ const TEST_CAMERA_MS = 20000
 const MOOD_VOICE_MS = 5 * 60000
 const ageFromDob = (dob) => (dob ? Math.floor((Date.now() - new Date(dob)) / 31557600000) : null)
 
-export default function CompanionPage({ data, setData, user, patients, notify }) {
+export default function CompanionPage({ data, setData, user, patients, notify, setPage }) {
   const patient = patients[0]
   if (!patient) return <Empty title="No linked patient" text="The AI companion needs a patient account."/>
-  return <CompanionInner {...{ data, setData, user, patient, notify }}/>
+  return <CompanionInner {...{ data, setData, user, patient, notify, setPage }}/>
 }
 
-function CompanionInner({ data, setData, user, patient, notify }) {
+function CompanionInner({ data, setData, user, patient, notify, setPage }) {
   const stored = data.companion?.[patient.id]
   const state = useMemo(() => ({ ...EMPTY, ...stored }), [stored])
   const profile = useMemo(() => mergeProfile(state.profile), [state.profile])
@@ -502,7 +502,7 @@ function CompanionInner({ data, setData, user, patient, notify }) {
     <StatusStrip aiOn={profile.autonomous} online={online} thermalStatus={thermal.status} cctvOn={cctvOn} recording={recordingActive} listening={voice.listening} speaking={voice.speaking} level={level}/>
     <div className="cmp-grid">
       <ConversationPanel messages={messages} onSend={handleHeard} onMic={onMic} onFeedback={handleFeedback} thinking={thinking} listening={voice.listening} interim={voice.interim} canListen={voice.canListen} companionName={companionName}/>
-      <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }}/>
+      <PrivacyPanel {...{ guard, thermal, cctv: { ...cctv, on: cctvOn }, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss }} onOpenSettings={() => setPage?.('settings')}/>
       <PhonePanel link={phoneLink} profile={profile} setThermalSource={setThermalSource} setVision={setVision} llmOn={profile.llm.enabled} visionNote={visionNote} onTestCamera={testCameraPhone} testing={testingCamera}/>
       <UnderstandingPanel snapshot={snapshot} events={state.events} camera={eyesText} voiceCheck={voiceCheck} baseline={profile.voiceBaseline} signals={signals}/>
       <VoicePanel {...{ voice, profile, setProfile, hasSample, recording: recordingSample, onRecord: onRecordSample, onTest: () => say(`Hi, I'm ${companionName}. This is how I will sound.`) }}/>
