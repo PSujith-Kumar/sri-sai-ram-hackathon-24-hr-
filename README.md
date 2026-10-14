@@ -10,6 +10,8 @@ The repository uses only fictional hospitals and patients. It is a demonstration
 
 ## Contents
 
+- [Problem statement](#problem-statement)
+- [How CareBridge solves it](#how-carebridge-solves-it)
 - [Why CareBridge](#why-carebridge)
 - [Demo data](#demo-data)
 - [Application tour: every tab](#application-tour-every-tab)
@@ -27,6 +29,56 @@ The repository uses only fictional hospitals and patients. It is a demonstration
 - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
+
+## Problem statement
+
+A hospital visit is not one isolated clinical event. It is a connected journey involving registration, queues, navigation, consultations, reports, medicines, follow-up, family support, and—sometimes—emotional or emergency assistance. In many care environments these activities are handled by separate desks, paper records, phone calls, and disconnected applications. The result is unnecessary waiting, repeated questions, missed instructions, poor visibility for caregivers, and more administrative effort for clinical teams.
+
+The central problem is therefore not simply **“put hospital records online.”** It is:
+
+> **How can multiple hospitals coordinate a patient's complete care journey in one understandable system while ensuring that every person sees and changes only the information they are legitimately allowed to access?**
+
+CareBridge addresses the following practical gaps:
+
+1. **Fragmented patient journeys.** Queue status, appointments, reports, prescriptions, directions, and care messages often live in different places and do not update one another.
+2. **Unclear responsibility.** Network administrators, deans, department heads, doctors, patients, and family caregivers need different tools and different data scopes, but many systems treat access as simply “staff” or “patient.”
+3. **Unsafe family access.** A caregiver may need medicine or queue information without being entitled to every clinical record. Access must depend on an approved relationship and category-level consent.
+4. **Operational uncertainty.** Patients may not know where to go, how long they will wait, or whether their token has moved; staff may lack one current view of queues and assignments.
+5. **Incomplete continuity of care.** A report, medicine schedule, appointment, and caregiver update should form one longitudinal story rather than unrelated entries.
+6. **Support gaps between visits.** A patient may need a calm, personalized wellbeing conversation or a safe escalation path, but camera use, memory, notifications, and contact actions must remain visible and consent-controlled.
+7. **Accessibility and connectivity barriers.** A useful solution must work on mobile screens, provide clear accessible routes, and demonstrate a low-bandwidth alternative rather than assuming perfect connectivity.
+8. **Governance across hospitals.** A multi-hospital network needs a maintainable hierarchy—from network administrator and dean to department head and specialist—without leaking one hospital's data into another.
+
+This repository solves those problems as a **fictional, testable prototype**. It demonstrates workflows and privacy boundaries; it does not claim regulatory certification, provide medical diagnosis, or replace an emergency service.
+
+## How CareBridge solves it
+
+CareBridge uses one shared, versioned care model and presents a different, permission-scoped workspace to each role. A change is recorded once and then becomes visible only in the authorized views that depend on it. For example, when a doctor creates a report, the patient can read the same report; an approved father can see it only if the relationship includes records access and the report is shared with family; an unrelated patient or doctor cannot see it.
+
+| Problem | CareBridge capability | Result | Privacy or safety control |
+|---|---|---|---|
+| Disconnected hospital services | One data graph for hospitals, users, relationships, appointments, queues, reports, medicines, and notifications | Updates stay consistent across role dashboards and browser tabs | Every query is filtered by role, hospital, assignment, relationship, and action permission |
+| Complex hospital hierarchy | Network, hospital, department, and clinician administration | Admins can model a dean, department heads, specialists, patients, and caregivers for multiple fictional hospitals | Hospital-scoped roles cannot cross into another hospital's workspace |
+| Long and confusing waits | **QueueCare** live tokens, people-ahead count, wait estimate, queue controls, and notifications | Patients understand progress while authorized staff operate the queue | Patient views avoid exposing other patients' identities |
+| Difficulty finding departments | **ClinicCompass** floor maps with predefined standard and accessible routes | Patients receive step-by-step indoor directions | Routes use fictional maps and do not track a real person's live location |
+| Reports that are hard to create or review | **HealthStory** report creation with title, type, date, description, summary, sharing, printing, and detailed viewing | A clinical event becomes an understandable, reusable part of the patient's history | Access is relationship-scoped; only the creator may delete, and only within 24 hours |
+| Missed or unclear medicine schedules | **MedMinder** schedules, daily status, reminders, and rollover rules | Patients can follow today's plan and clinicians can maintain assigned-patient schedules | Only the patient records a dose as taken/skipped; caregiver editing is limited to schedules that caregiver created |
+| Family members either see too much or too little | **CareCircle** approved links with separate `care`, `queue`, `medications`, and `records` permissions | A father or other trusted person receives only the help context the patient approved | Relationship approval and per-category permissions are both required; report family-sharing is checked separately |
+| Wellbeing support lacks context | Optional AI companion with recent conversation memory, feedback, adaptive tone, health-context controls, and mood/safety signals | Responses can become more relevant to the individual instead of repeatedly asking the same questions | Memory and clinical context are explicit settings; stored conversation history is limited to 30 days and can be cleared |
+| Camera-based safety features feel invasive | Explicit simulator, thermal phone, CCTV phone, and both-sensors test modes with a visible three-state privacy model | Teams can test sensor escalation while users always know whether sensors are off, armed, or actively streaming | Browser permission is required; phone gateway tokens, short leases, payload limits, and local-only handling reduce exposure |
+| Urgent support is delayed | Consent-based favourite-contact notification and a user-confirmed emergency-call handoff | Panic or emergency test scenarios have a clear escalation path | The demo never silently places a real call and does not present AI output as diagnosis |
+| Poor or intermittent connectivity | Responsive progressive web interface plus a low-bandwidth USSD simulator | Core journey concepts can be demonstrated beyond a desktop-only experience | The USSD flow uses fictional data and simulated actions |
+
+### Connected-care example
+
+1. An administrator creates a fictional hospital, its departments, leadership, doctors, queues, and map.
+2. A doctor is assigned to a patient; the patient separately approves a family caregiver and chooses exactly which categories that caregiver may access.
+3. The patient joins a queue. Queue staff advance the token, and the patient's home and QueueCare tabs update from the same record.
+4. The doctor completes the consultation, creates a descriptive report, and adds a medicine schedule. The patient can immediately open the report and view today's medicine plan.
+5. If the report is marked for family sharing and the caregiver has `records` permission, it appears in the caregiver's Shared records tab. Otherwise it remains hidden.
+6. Between visits, the patient can use CareCircle or the optional AI companion. Escalation follows the patient's saved consent and favourite-contact settings rather than notifying every linked person.
+
+This flow is the core design decision behind CareBridge: **connect the work, not the permissions**. Data can support an end-to-end journey without becoming universally visible.
 
 ## Why CareBridge
 
