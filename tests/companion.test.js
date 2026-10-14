@@ -201,17 +201,19 @@ describe('thermal camera with realistic sensor noise', () => {
 })
 
 describe('thermal sensor startup policy', () => {
-  it('starts the hosted simulator with AI care mode', () => {
+  it('keeps the hosted simulator available for testing', () => {
     expect(thermalStartsWithAi({ thermal: { kind: 'sim' } })).toBe(true)
     expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: true, thermal: { kind: 'sim' } })).toBe(true)
-    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: true, thermal: { kind: 'sim' } })).toBe(false)
-    expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: false, thermal: { kind: 'sim' } })).toBe(false)
+    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: true, thermal: { kind: 'sim' } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: false, thermal: { kind: 'sim' } })).toBe(true)
   })
 
-  it('keeps real sources behind their explicit activation policy', () => {
-    expect(thermalStartsWithAi({ thermal: { kind: 'http', alwaysOn: true } })).toBe(false)
+  it('keeps real sources behind consent and their explicit activation policy', () => {
+    expect(thermalStartsWithAi({ thermal: { kind: 'http', alwaysOn: true } })).toBe(true)
     expect(thermalStartsWithAi({ thermal: { kind: 'phone', alwaysOn: false } })).toBe(false)
     expect(thermalStartsWithAi({ thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: true, thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: false, thermal: { kind: 'phone', alwaysOn: true } })).toBe(false)
     expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: true, thermal: { kind: 'http' } }, true)).toBe(true)
   })
 })

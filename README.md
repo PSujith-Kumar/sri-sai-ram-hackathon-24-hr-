@@ -163,8 +163,8 @@ The login page also provides a **Choose a demo role** menu that fills the primar
 
 - Thermal-camera simulator or optional HTTP thermal gateway.
 - Explicit patient consent before safety sensors may run.
-- Thermal monitoring starts only after an unanswered check-in.
-- CCTV stays off unless a thermal signal requires a live verification step.
+- The built-in thermal simulator stays on for immediate testing; real thermal sources still require patient consent.
+- Prototype test mode can show the thermal simulator and local camera together. Outside test mode, CCTV opens only when a signal requires live verification.
 - Incident recording is local to the device and limited to confirmed abnormal events.
 - Incident clips can be viewed and deleted locally.
 - Two phones over USB tethering or Wi-Fi can replace the simulator: an always-on thermal phone (heat shapes only) and a camera phone that stays off until a change in the patient's voice or words, or the thermal phone, calls for a live look. Gemma 3 then reads the camera picture, and two looks in a row must agree before anything counts. See [`PHONE_SETUP.md`](./PHONE_SETUP.md).

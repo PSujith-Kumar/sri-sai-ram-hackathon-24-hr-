@@ -19,6 +19,9 @@ export const DEFAULT_PROFILE = {
   adaptiveTone: true,
   avoidRepetition: true,
   useRecordContext: true,
+  // Prototype default: keep the privacy-safe thermal simulator and the local
+  // camera visible together so the complete sensor flow can be demonstrated.
+  sensorTestMode: true,
   sensorEscalationConsent: false,
   caregiverEscalationConsent: true,
   favouriteContactId: '',
@@ -49,16 +52,19 @@ export const mergeProfile = (profile = {}) => ({
   contacts: profile.contacts || [],
 })
 
-// The browser simulator is a visible, zero-hardware demo and should begin as soon as
-// AI care mode and sensor consent are both on. A real phone remains opt-in through its
-// separate always-on control, while HTTP gateways still start only after escalation.
+// The browser simulator contains only generated temperatures, so it can stay live
+// for the prototype without waiting for an unanswered check-in. Real sensors still
+// require consent; their explicit always-on setting can keep them active outside AI mode.
 export const thermalStartsWithAi = (profile = {}) => {
   const thermal = profile.thermal || {}
-  return thermal.kind === 'sim' || (thermal.kind === 'phone' && thermal.alwaysOn === true)
+  return thermal.kind === 'sim' || thermal.alwaysOn === true
 }
 
-export const thermalSensorsEnabled = (profile = {}, safetySensorsActive = false) => Boolean(
-  profile.autonomous
-  && profile.sensorEscalationConsent
-  && (safetySensorsActive || thermalStartsWithAi(profile))
-)
+export const thermalSensorsEnabled = (profile = {}, safetySensorsActive = false) => {
+  const thermal = profile.thermal || {}
+  if (thermal.kind === 'sim') return true
+  return Boolean(
+    profile.sensorEscalationConsent
+    && (thermal.alwaysOn === true || (profile.autonomous && safetySensorsActive))
+  )
+}

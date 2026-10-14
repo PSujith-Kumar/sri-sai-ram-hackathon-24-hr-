@@ -28,14 +28,14 @@ function Heatmap({ frame }) {
   return <canvas ref={ref} width={frame?.width || 32} height={frame?.height || 24} className="cmp-heat" aria-label="Thermal heat map"/>
 }
 
-export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, scenario, setScenario, sensorLoss, setSensorLoss, onOpenSettings }) {
-  const copy = MODE_COPY[guard.mode]
+export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, setSensorTestMode, scenario, setScenario, sensorLoss, setSensorLoss, onOpenSettings }) {
+  const copy = profile.sensorTestMode ? { tone: 'blue', icon: <Camera/>, title: 'Both-sensor test' } : MODE_COPY[guard.mode]
   const src = profile.thermal
   const kind = src.cctvKind
-  const simulatorReady = profile.sensorEscalationConsent && profile.autonomous && src.kind === 'sim'
+  const simulatorReady = src.kind === 'sim' && thermal.status !== 'off'
   return <Card className="cmp-camera">
     <div className="card-head"><div><p className="eyebrow">PRIVACY-FIRST WATCH</p><h2>Thermal sensor and CCTV</h2></div><Badge tone={copy.tone}>{copy.icon} {copy.title}</Badge></div>
-    <p className="cmp-note cmp-lead"><Lock/> {!profile.sensorEscalationConsent ? 'Safety-sensor consent is off. Thermal and CCTV remain off; Asha uses voice check-ins and approved care-circle alerts instead.' : thermal.status === 'off' && src.kind === 'phone' && src.alwaysOn ? 'The thermal phone starts watching heat shapes when AI care mode is on. The camera phone stays off until a change in your voice, your words or the thermal watch calls for a live look.' : thermal.status === 'off' ? 'Safety sensors are approved but remain off. Thermal starts only after an unanswered check-in; CCTV still requires an abnormal thermal event.' : copy.text}</p>
+    <p className="cmp-note cmp-lead"><Lock/> {profile.sensorTestMode ? 'Both-sensor test mode is on. The generated thermal feed stays active and this device camera opens beside it after browser permission is granted. Test frames are not uploaded.' : !profile.sensorEscalationConsent ? 'The generated thermal demo stays available. Real safety sensors and CCTV require permission; Asha uses voice check-ins and approved care-circle alerts instead.' : thermal.status === 'off' && src.kind === 'phone' && src.alwaysOn ? 'The thermal phone is configured to watch heat shapes continuously. The camera phone stays off until a change in your voice, words or thermal watch calls for a live look.' : thermal.status === 'off' ? 'The selected real thermal source is waiting for its activation policy. CCTV still requires an abnormal event.' : copy.text}</p>
     <div className="cmp-cams">
       <figure><div className="cmp-video cmp-thermalbox">{thermal.frame ? <Heatmap frame={thermal.frame}/> : <div className="cmp-video-off"><Flame/><b>{SENSOR_LABEL[thermal.status]}</b></div>}</div><figcaption><Flame/> Thermal · {SENSOR_LABEL[thermal.status]}{thermal.analysis?.presence && ` · skin ${thermal.analysis.skinTop}°C · ${thermal.analysis.posture}`}</figcaption></figure>
       <figure><div className="cmp-video">
@@ -43,23 +43,22 @@ export function PrivacyPanel({ guard, thermal, cctv, profile, setThermalSource, 
         {kind === 'ip' && src.cctvUrl && cctv.on && <img ref={cctv.imgRef} src={src.cctvUrl} crossOrigin="anonymous" alt="IP camera feed" {...cctv.ipHandlers}/>}
         {kind === 'phone' && cctv.on && <img ref={cctv.imgRef} className={cctv.status === 'live' ? '' : 'cmp-hidden'} alt="Camera phone picture"/>}
         {!(cctv.on && cctv.status === 'live') && <div className="cmp-video-off"><CameraOff/><b>{cctv.on ? SENSOR_LABEL[cctv.status] : 'CCTV off'}</b><small>{cctv.on ? 'Opening the camera… if it cannot open, voice check-ins are used.' : 'Stays off until needed.'}</small></div>}
-      </div><figcaption>{cctv.on ? <Camera/> : <CameraOff/>} CCTV · {cctv.on ? 'on for a live check' : 'off'}</figcaption></figure>
+      </div><figcaption>{cctv.on ? <Camera/> : <CameraOff/>} CCTV · {cctv.on ? (profile.sensorTestMode ? 'on for testing' : 'on for a live check') : 'off'}</figcaption></figure>
     </div>
     {thermal.active.length > 0 && <p className="cmp-note"><b>Thermal sensor reports:</b> {thermal.active.join(', ')}</p>}
     <div className="form-stack cmp-form">
       <div className="form-grid">
-        <label>Thermal camera<select value={src.kind} onChange={e => setThermalSource({ kind: e.target.value })}><option value="sim">Built-in simulator (no hardware)</option><option value="http">Thermal camera gateway (HTTP JSON)</option><option value="phone">Thermal phone (see Phone cameras)</option></select></label>
-        <label>Gateway URL<input value={src.url} disabled={src.kind !== 'http'} placeholder="http://192.168.1.30/frame.json" onChange={e => setThermalSource({ url: e.target.value })}/></label>
+        <label>Thermal camera<select value={src.kind} disabled={profile.sensorTestMode} onChange={e => setThermalSource({ kind: e.target.value })}><option value="sim">Built-in simulator (no hardware)</option><option value="http">Thermal camera gateway (HTTP JSON)</option><option value="phone">Thermal phone (see Phone cameras)</option></select></label>
+        <label>Gateway URL<input value={src.url} disabled={profile.sensorTestMode || src.kind !== 'http'} placeholder="http://192.168.1.30/frame.json" onChange={e => setThermalSource({ url: e.target.value })}/></label>
       </div>
       <div className="form-grid">
-        <label>CCTV type<select value={kind} onChange={e => setThermalSource({ cctvKind: e.target.value })}><option value="webcam">This device’s camera</option><option value="ip">IP / CCTV camera (MJPEG URL)</option><option value="phone">Camera phone (switches on only when needed)</option></select></label>
-        <label>CCTV stream URL<input value={src.cctvUrl} disabled={kind !== 'ip'} placeholder="http://192.168.1.20/video.mjpg" onChange={e => setThermalSource({ cctvUrl: e.target.value })}/></label>
+        <label>CCTV type<select value={kind} disabled={profile.sensorTestMode} onChange={e => setThermalSource({ cctvKind: e.target.value })}><option value="webcam">This device’s camera</option><option value="ip">IP / CCTV camera (MJPEG URL)</option><option value="phone">Camera phone (switches on only when needed)</option></select></label>
+        <label>CCTV stream URL<input value={src.cctvUrl} disabled={profile.sensorTestMode || kind !== 'ip'} placeholder="http://192.168.1.20/video.mjpg" onChange={e => setThermalSource({ cctvUrl: e.target.value })}/></label>
       </div>
     </div>
-    <div className="cmp-demo"><b>Demo: thermal sensor</b>{SCENARIOS.map(s => <button key={s} type="button" disabled={!simulatorReady} className={`btn btn-secondary ${scenario === s ? 'cmp-on' : ''}`} onClick={() => setScenario(s)}>{SCENARIO_LABEL[s]}</button>)}<button className="btn btn-secondary" disabled={!simulatorReady} type="button" onClick={() => setSensorLoss(!sensorLoss)}>{sensorLoss ? 'Restore sensor' : 'Simulate sensor loss'}</button></div>
-    {!profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> <span>Enable “Allow safety sensors after no reply” before running sensor demos.</span><button className="text-btn" type="button" onClick={onOpenSettings}>Open settings</button></p>}
-    {profile.sensorEscalationConsent && !profile.autonomous && <p className="cmp-consent-note"><ShieldCheck/> Start AI care mode to run the thermal sensor demo.</p>}
-    {profile.sensorEscalationConsent && profile.autonomous && src.kind !== 'sim' && <p className="cmp-consent-note"><ShieldCheck/> Choose “Built-in simulator” above to run demo conditions. Connected hardware uses its real frames instead.</p>}
+    <div className="cmp-demo"><b>Sensor testing</b><button className={`btn ${profile.sensorTestMode ? 'btn-dark' : 'btn-primary'}`} type="button" onClick={() => setSensorTestMode(!profile.sensorTestMode)}>{profile.sensorTestMode ? 'Stop both-camera test' : 'Start thermal + camera test'}</button>{SCENARIOS.map(s => <button key={s} type="button" disabled={!simulatorReady} className={`btn btn-secondary ${scenario === s ? 'cmp-on' : ''}`} onClick={() => setScenario(s)}>{SCENARIO_LABEL[s]}</button>)}<button className="btn btn-secondary" disabled={!simulatorReady} type="button" onClick={() => setSensorLoss(!sensorLoss)}>{sensorLoss ? 'Restore sensor' : 'Simulate sensor loss'}</button></div>
+    {!profile.sensorTestMode && !profile.sensorEscalationConsent && <p className="cmp-consent-note"><ShieldCheck/> <span>The thermal simulator remains available. Enable sensor permission before connecting real thermal or CCTV hardware.</span><button className="text-btn" type="button" onClick={onOpenSettings}>Open settings</button></p>}
+    {!profile.sensorTestMode && profile.sensorEscalationConsent && src.kind !== 'sim' && <p className="cmp-consent-note"><ShieldCheck/> Choose “Built-in simulator” above to run demo conditions. Connected hardware uses its real frames instead.</p>}
     <p className="cmp-note"><ShieldCheck/> Nothing is saved or shared unless something abnormal is confirmed. A thermal gateway should return JSON like <code>{'{"width":32,"height":24,"temps":[…°C]}'}</code>. Temperature flags are screening hints, not a diagnosis.</p>
   </Card>
 }
