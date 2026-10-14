@@ -2,7 +2,7 @@
 
 > One platform for connected, consent-aware care across hospitals, clinicians, patients, and approved family caregivers.
 
-[Open the live demo](https://carebridge-sairam-live.glossyharp64.chatgpt.site/) · [View the GitHub repository](https://github.com/PSujith-Kumar/sri-sai-ram-hackathon-24-hr-)
+[Open the live demo](https://carebridge-sairam.chummy-tune-1523.chatgpt.site/) · [View the GitHub repository](https://github.com/PSujith-Kumar/sri-sai-ram-hackathon-24-hr-)
 
 CareBridge is a responsive multi-hospital healthcare-assistance prototype built for the Sairam VERDICT hackathon. It combines hospital administration, role-scoped patient access, queues, appointments, indoor navigation, health reports, medicines, family coordination, and an optional AI wellbeing companion in one React application.
 
@@ -12,8 +12,10 @@ The repository uses only fictional hospitals and patients. It is a demonstration
 
 - [Why CareBridge](#why-carebridge)
 - [Demo data](#demo-data)
+- [Application tour: every tab](#application-tour-every-tab)
 - [Features](#features)
 - [Roles and access](#roles-and-access)
+- [End-to-end workflows](#end-to-end-workflows)
 - [System architecture](#system-architecture)
 - [Technology stack](#technology-stack)
 - [Run locally](#run-locally)
@@ -21,7 +23,7 @@ The repository uses only fictional hospitals and patients. It is a demonstration
 - [Testing](#testing)
 - [Project structure](#project-structure)
 - [Important business rules](#important-business-rules)
-- [Privacy, safety, and limitations](#privacy-safety-and-limitations)
+- [Privacy and security model](#privacy-and-security-model)
 - [Deployment](#deployment)
 - [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
@@ -72,6 +74,97 @@ All demo accounts use the password `care123`.
 | Family caregiver | `ravi@carebridge.demo` | Only the information and actions approved by the linked patient |
 
 The login page also provides a **Choose a demo role** menu that fills the primary demo accounts automatically.
+
+## Application tour: every tab
+
+CareBridge does not show one universal dashboard to everyone. The sidebar is generated from the signed-in role, assigned hospital, doctor-to-patient relationships, approved family links, and the permissions on those links. If a family member does not have a permission such as `records`, that tab is removed rather than merely showing an access error after it is opened.
+
+### Shared application controls
+
+| Control | How it works |
+|---|---|
+| Hospital selector | Appears only when the current role can access more than one hospital. Changing it refreshes hospital-scoped dashboards, hierarchy, queues, people, and maps. |
+| Notifications bell | Opens an accessible dialog containing only notifications addressed to the signed-in user. A notification can be marked read and can navigate to its related tab. |
+| Profile chip | Shows the current fictional identity and title so role testing is easy to verify. |
+| Mobile navigation | Opens as a focus-trapped drawer, closes with Escape or the backdrop, restores focus to the menu button, and prevents the hidden navigation from receiving input. |
+| Sign out | Ends the current demo session without deleting browser-local demo data. |
+
+### Network administrator workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **Overview** | Network totals, selected-hospital statistics, facility cards, hierarchy preview, and direct links to hospitals, organization, and access management. |
+| **Hospitals** | Create and edit fictional hospitals, validate required metadata, set bed capacity and branding, and configure a usable floor map. |
+| **Organization** | Build the hospital hierarchy, manage departments, assign department heads, inspect specialists, and verify staffing relationships. |
+| **People & access** | Search users, add role-specific users, review doctor and family relationships, approve or revoke family links, and safely remove users with dependent-reference cleanup. |
+| **Queue operations** | Inspect every authorized live queue, issue tokens, call or advance patients, complete or skip tokens, and pause or resume service. |
+| **ClinicCompass maps** | Test indoor navigation across accessible hospitals and validate routes against the selected floor plan. |
+
+### Hospital dean workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **Hospital overview** | Hospital-only patient, department, live-queue, and wait-time snapshot. |
+| **Organization** | Maintain the assigned hospital's departments, leaders, and care teams. |
+| **Staff & patients** | Review users and explicit care relationships inside the dean's hospital scope. |
+| **Queue operations** | Operate queues belonging to the dean's hospital. |
+| **ClinicCompass maps** | Test the hospital's indoor routes and accessibility paths. |
+
+### Department-head workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **Department overview** | Department-level patients, care teams, queues, wait time, and upcoming work. |
+| **My patients** | Shows only patients assigned to the head; supports registering or taking on an eligible patient. |
+| **Queue desk** | Operates queues within the authorized clinical scope. |
+| **Appointments** | Books and updates consultations for assigned patients and valid doctors. |
+| **Care team** | Displays the department structure and the clinicians participating in care. |
+| **Patient reports** | Creates, searches, opens, shares, and—when permitted—deletes reports. |
+| **Medicines** | Maintains medicine schedules for assigned patients. |
+| **ClinicCompass** | Plans accessible routes through the current hospital. |
+
+### Doctor workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **Clinical dashboard** | Assigned-patient count, appointments, current token, recent reports, AI alerts, patient roster, and upcoming consultations. |
+| **My patients** | Opens only assigned patients and supports adding a new or waiting unassigned patient. |
+| **Queue desk** | Manages the doctor's queue without exposing unrelated queues. |
+| **Appointments** | Creates and updates appointments for assigned patients. |
+| **Patient reports** | Writes a complete report with title, type, date, description, and summary; opens reports in a readable detail view. |
+| **Medicines** | Adds, edits, or removes schedules for assigned patients. |
+| **ClinicCompass** | Provides route planning within the doctor's hospital. |
+
+### Patient workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **My home** | Current queue token, people ahead, estimated wait, next destination, upcoming appointment, today's medicine, and recent health activity. |
+| **AI Companion** | Text/voice conversation, mood and safety signals, response feedback, thermal and camera testing, phone pairing, incident clips, contacts, model status, and emergency support controls. |
+| **AI & privacy settings** | Controls 30-day memory, adaptive tone, repetition avoidance, health-record context, sensor test mode, escalation consent, favourite contact, and memory deletion. |
+| **My care team** | Shows assigned clinicians and approved family caregivers, including what each relationship is allowed to access. |
+| **QueueCare** | Shows the patient's token and live progress without exposing another patient's identity. |
+| **Appointments** | Shows and manages the patient's consultations. |
+| **ClinicCompass** | Produces standard or wheelchair-friendly directions from one hospital location to another. |
+| **HealthStory** | Creates, searches, opens, shares, prints, and conditionally deletes the patient's health reports. |
+| **MedMinder** | Shows schedules and lets only the patient confirm today's dose as taken or skipped. |
+| **CareCircle** | Sends **I'm okay** or **I need help** check-ins to approved caregivers and shows acknowledgements. |
+
+### Family-caregiver workspace
+
+| Tab | Purpose and main actions |
+|---|---|
+| **Family home** | A permission-filtered snapshot of the approved linked patient. |
+| **Linked patient** | Confirms which patient relationship authorizes access. |
+| **QueueCare** | Available only with the `queue` permission; shows the linked patient's visit progress. |
+| **Appointments** | Uses the queue/visit permission and shows only the linked patient's appointments. |
+| **MedMinder** | Available only with `medications`; a caregiver may manage only schedules that caregiver created. |
+| **CareCircle** | Available only with `care`; acknowledges the linked patient's requests. |
+| **Shared records** | Available only with `records`; displays only reports the patient or creator marked for family sharing. |
+
+### What happens when data changes
+
+All tabs use the same versioned data object. A queue action can therefore update the patient's home page and create a family notification; a report created by a doctor can appear in the patient's HealthStory; and an approved family acknowledgement can appear back in the patient's CareCircle. The application also listens for browser storage events, allowing two open tabs on the same origin to demonstrate cross-role synchronization.
 
 ## Features
 
@@ -162,12 +255,13 @@ The login page also provides a **Choose a demo role** menu that fills the primar
 ### Privacy-first sensor demonstration
 
 - Thermal-camera simulator or optional HTTP thermal gateway.
-- Explicit patient consent before safety sensors may run.
-- The built-in thermal simulator stays on for immediate testing; real thermal sources still require patient consent.
-- Prototype test mode can show the thermal simulator and local camera together. Outside test mode, CCTV opens only when a signal requires live verification.
+- The built-in thermal simulator contains generated temperature values and stays available without opening a physical camera.
+- Prototype **both-sensor test mode** keeps the currently selected thermal and camera sources visible together; browser/device permission is still required for a physical camera.
+- Selecting the two-phone option preserves both phone sources and activates the test path instead of reverting to the PC camera.
+- Outside test mode, real sensors require patient consent and CCTV opens only when a voice, text, or thermal signal requires live verification.
 - Incident recording is local to the device and limited to confirmed abnormal events.
-- Incident clips can be viewed and deleted locally.
-- Two phones over USB tethering or Wi-Fi can replace the simulator: an always-on thermal phone (heat shapes only) and a camera phone that stays off until a change in the patient's voice or words, or the thermal phone, calls for a live look. Gemma 3 then reads the camera picture, and two looks in a row must agree before anything counts. See [`PHONE_SETUP.md`](./PHONE_SETUP.md).
+- Incident clips are stored in browser IndexedDB, capped at five, automatically expire after seven days, and can be viewed or deleted locally.
+- Two phones over USB tethering or Wi-Fi can replace the simulator and PC webcam. In normal privacy mode, the thermal phone can watch heat shapes while the camera phone stays off until a change in voice, words, or thermal state calls for a live look. Gemma 3 can inspect the camera picture, and two consecutive looks must agree before the vision event is treated as confirmed. See [`PHONE_SETUP.md`](./PHONE_SETUP.md).
 
 ### Emergency support demonstration
 
@@ -197,6 +291,58 @@ CareBridge never silently completes a phone call, SMS, or USSD action. The user 
 
 These checks demonstrate the intended policy in the browser. A production system must enforce the same rules on a trusted backend for every request.
 
+## End-to-end workflows
+
+### 1. Patient, doctor, and father share one care journey
+
+1. Sign in as `ananya@carebridge.demo` to see Ananya's patient workspace.
+2. Ananya's patient object assigns Dr. Meera through `doctorIds` and approves Ravi through `familyLinks`.
+3. Sign in as `meera@sanjeevani.demo`; Dr. Meera can see Ananya because the assignment is explicit.
+4. Sign in as `ravi@carebridge.demo`; Ravi can see only Ananya and only the categories listed in his approved permission array.
+5. Revoke Ravi's relationship in **People & access** and his permission-controlled tabs disappear.
+
+### 2. Report creation, sharing, viewing, and deletion
+
+1. An authorized doctor, department head, or patient opens **HealthStory / Patient reports**.
+2. The form validates patient scope and saves title, report type, hospital, date, full description, and concise summary.
+3. Opening a report shows the complete content rather than only its list row.
+4. Family visibility requires both an approved family link with `records` permission and the report's family-sharing flag.
+5. Delete is allowed only for the original creator and only for 24 hours from `createdAt`; the operation layer rejects every other attempt even if a button were exposed incorrectly.
+
+### 3. Queue synchronization
+
+1. A hospital operator issues or advances a queue token.
+2. `queueOps.js` validates the transition and returns immutable updated state.
+3. Recipient IDs are calculated from the patient, approved family relationships, and authorized staff.
+4. The patient's **My home** and **QueueCare** tabs update from the same queue state.
+5. Matching users receive a navigable notification; unrelated users receive nothing.
+
+### 4. Medicine scheduling and daily confirmation
+
+1. An assigned clinician creates a schedule with medicine, dose, time, instruction, notes, and optional end date.
+2. An approved caregiver with `medications` permission may add a schedule, but may later edit or remove only that caregiver-created item.
+3. The patient marks today's dose taken or skipped.
+4. The minute-based rollover check clears yesterday's confirmation when the local date changes.
+
+### 5. AI and sensor escalation
+
+1. Deterministic emergency phrases and clinical boundary rules run before generative AI.
+2. Voice, text, medicine, thermal, and optional camera observations are combined into a non-diagnostic wellbeing assessment.
+3. A soft signal such as a changed voice can request a live look but cannot by itself confirm an incident.
+4. A camera observation or a sustained thermal anomaly can move the privacy guard from **thermal-only** to **verifying** and then **recording**.
+5. Only a confirmed abnormal event creates a local incident clip and care-circle/hospital demo alerts.
+6. When the situation becomes calm and the patient responds, recording and the event-triggered camera check stop automatically.
+
+### 6. Two-phone testing
+
+1. Run CareBridge locally with `start.bat` or `npm run dev`; hosted static copies cannot reach the PC's private phone gateway.
+2. Open **AI Companion → Phone cameras**, choose the correct USB-tethering or Wi-Fi address, and scan one QR code with each phone.
+3. On the thermal phone choose a thermal attachment, privacy-preserving silhouette, or test pattern.
+4. Select **Use these two phones as my sensors**. CareBridge preserves `thermal: phone` and `CCTV: phone`; it does not fall back to this device's camera.
+5. In the current prototype test mode, both selected phone sources may remain active for immediate verification. Turn off test mode to return to event-triggered normal-camera behavior.
+
+For detailed network, certificate, firewall, and phone instructions, see [`PHONE_SETUP.md`](./PHONE_SETUP.md).
+
 ## System architecture
 
 ```mermaid
@@ -206,6 +352,9 @@ flowchart LR
     STORE[Versioned browser-local demo store]
     RULES[Role and relationship rules]
     AI[Optional local AI services]
+    PHONE[Local two-phone gateway]
+    THERMAL[Thermal phone]
+    CAMERA[Camera phone]
     ROUTE[Optional OpenRouter route explanation]
 
     U --> UI
@@ -213,6 +362,9 @@ flowchart LR
     RULES --> STORE
     UI -. /classifier .-> AI
     UI -. /ollama .-> AI
+    UI <-. loopback only .-> PHONE
+    THERMAL <-. private network + token .-> PHONE
+    CAMERA <-. private network + token .-> PHONE
     UI -. /openrouter .-> ROUTE
 ```
 
@@ -224,6 +376,16 @@ flowchart LR
 4. Pure operation modules validate permissions and return new immutable state.
 5. React pages render only the entities visible to the current role and relationships.
 6. Notifications connect changes across queues, reports, medicines, appointments, and care requests.
+
+### Trust boundaries
+
+| Boundary | Current prototype behavior | Production requirement |
+|---|---|---|
+| Browser ↔ demo data | Same-origin browser storage; no central clinical database | Authenticated API, encrypted database, audit events, backups, retention policy |
+| UI ↔ authorization | Pure operation functions and role-filtered UI | Repeat every authorization check on a trusted server; never trust client claims |
+| Browser ↔ local AI | Vite proxies to localhost services | Authenticated private inference service with consent, logging policy, and data-processing agreement |
+| Browser ↔ OpenRouter | Server-side development proxy holds the key | Managed secret store, egress policy, redaction, and explicit patient consent |
+| PC ↔ phones | Private-network source, short random token, local in-memory relay | Device enrollment, mutually authenticated transport, rotation, revocation, monitoring, and documented clinical ownership |
 
 The default deployment is a static application. It does not include a production database or server authentication.
 
@@ -378,7 +540,7 @@ The test suite covers:
 - AI companion safety decisions, mood classification, multilingual phrases, memory, voice signals, thermal simulation, and offline relay behavior;
 - legacy browser-data migration, including the regression that previously caused a blank screen.
 
-The latest verified build contains **391 passing tests across 21 test files**.
+The latest verified build contains **401 passing tests across 22 test files**.
 
 ## Project structure
 
@@ -463,51 +625,125 @@ The safety pipeline is conservative and layered:
 4. urgent events notify the approved care circle;
 5. critical events can also create a fictional hospital alert or offline relay item.
 
-## Privacy, safety, and limitations
+## Privacy and security model
 
-### Demonstration boundaries
+CareBridge follows privacy-by-design ideas in its workflows, but this repository is still a hackathon prototype. The distinction is important: the application demonstrates how access and consent should behave; it does not claim that browser-only controls are sufficient protection for real medical data.
 
-- All included people, records, medicines, appointments, hospitals, alerts, and queues are fictional.
-- Browser storage is used instead of a secure clinical database.
-- The shared demo password is intentionally insecure and must never be used in production.
-- Client-side role checks demonstrate UX policy; they are not a security boundary.
-- The application is not a medical device and does not diagnose, prescribe, or change a dose.
-- Queue times and route explanations are estimates.
-- AI mood and severity scores are non-diagnostic development signals.
+### Security and privacy summary
 
-### Data persistence
+| Area | Protection implemented in this prototype | Important limitation |
+|---|---|---|
+| Demo data | Every bundled hospital, person, report, medicine, appointment, alert, and queue item is fictional. | Never import real patient information into this build. |
+| Sign-in | Role-specific demo accounts make access paths testable. | The shared password `care123` and browser-side authentication are intentionally not production security. |
+| Authorization | Pages and pure operation functions check roles, hospital scope, assigned doctors, family-link status, and per-link permissions. | A malicious browser user can modify client code or storage; production authorization must run again on the server. |
+| Data minimization | Doctors see assigned patients; family users see one approved relationship and only permitted categories; notifications have explicit recipient IDs. | All seed data ships in the static JavaScript bundle, so this is appropriate only for fictional demo data. |
+| Persistence | Versioned `localStorage` keeps structured demo state; schema hydration prevents older data from crashing a newer build. | The app does not encrypt local storage. Any script running under the same origin may be able to read it. |
+| Reports | Family sharing is a separate flag; deletion requires creator identity and a 24-hour window. | Real documents need encrypted object storage, malware scanning, audit logs, and server-side retention rules. |
+| AI memory | Conversation memory is patient-specific, browser-local, limited to 30 days, optional, and patient-clearable. | Browser clearing is not a regulated deletion receipt; production needs an auditable retention/deletion service. |
+| Incident clips | Stored only in local IndexedDB, maximum five clips, seven-day expiry, manual deletion available. | Local device users or malware may still access browser storage; production needs managed keys, policy enforcement, and audit. |
+| API secrets | The OpenRouter development key stays in the Vite server proxy rather than browser code. | A static deployment cannot safely hold server secrets; use a managed backend or secret binding. |
+| Emergency actions | `tel:`, SMS, and fictional USSD actions require a visible user tap and device confirmation. | CareBridge does not prove that a call or message was completed and is not an emergency-dispatch system. |
 
-Demo changes are saved to versioned browser `localStorage`. Clearing site data resets the browser to the current seed dataset. When a schema changes, `hydrateCareData()` fills missing arrays and defaults so older saved data does not crash the application.
+### Role, relationship, and permission enforcement
 
-For production, replace local storage with:
+Access is calculated in layers:
 
-- authenticated server sessions;
-- hashed passwords or an identity provider;
-- server-side authorization on every operation;
-- encrypted medical storage;
-- audit trails and consent history;
-- secure file storage for reports;
-- backups, retention policies, and regional compliance controls.
+1. **Role** decides which categories of work are available—for example, only an administrator can manage hospitals.
+2. **Hospital scope** limits leaders and clinicians to their assigned facilities.
+3. **Clinical assignment** limits doctors and department heads to patient IDs explicitly containing their user ID.
+4. **Family relationship** requires a matching `familyLinks` entry with `status: approved`.
+5. **Family permission** separately gates `queue`, `medications`, `care`, and `records`.
+6. **Operation rule** rechecks the actor when a mutation is attempted, such as report deletion or medicine editing.
 
-### AI and sensor privacy
+This prevents an accidental UI route from becoming an automatic authorization grant. In production, the same model should be represented in signed server sessions and enforced on every API query and mutation.
 
-- Thirty-day chat memory is stored in the browser, can be disabled, and can be cleared by the patient.
-- The optional local classifier binds to localhost and does not log text.
-- A remote language or speech endpoint may transmit patient text or audio; use one only with explicit consent and a trusted provider.
-- Thermal and CCTV features require explicit settings and browser permissions.
-- No real camera should be used for a demo without the informed consent of everyone visible.
+### Browser storage and retention
 
-### Emergency limitations
+- The principal demo dataset is stored under a versioned same-origin `localStorage` key.
+- `hydrateCareData()` supplies newly introduced arrays and defaults when older browser data is loaded.
+- Clearing site data resets the application to the current fictional seed.
+- AI messages are pruned according to the patient's configured retention window, which defaults to 30 days.
+- Incident video blobs use IndexedDB rather than `localStorage`, are capped at five, and expire after seven days.
+- Phone frames are never written by the gateway: only the newest frame exists in server memory.
 
-The application currently displays India emergency `112` and Tele-MANAS `14416` for demonstration. Verify all numbers, clinical workflows, and local regulations independently before any real deployment.
+Local storage is convenient for a self-contained demonstration, but it is neither encrypted clinical storage nor a multi-user database. A real deployment needs encrypted records, separate tenant boundaries, backup and restore, legal retention rules, deletion evidence, and a complete audit trail.
 
-The `*123*…#` code and placeholder SMS number are fictional. They are not connected to a hospital or national emergency network. Browsers cannot and should not silently dial them.
+### AI privacy and safety boundaries
+
+- Deterministic emergency and medication-safety rules execute independently of Gemma and cannot be lowered by a model response.
+- Gemma is optional. When unavailable, fixed and tested replies remain active.
+- The bundled mood classifier runs in the browser. The optional Python classifier binds to `127.0.0.1:8765` and the included service does not log patient text.
+- Ollama can keep Gemma inference on the same computer. A remote endpoint can transmit patient text, camera images, or audio and must not be enabled without informed consent and an approved processor.
+- Health conditions, allergies, medicines, and report summaries are used only when **Use health-record context** is enabled.
+- Response feedback is stored with the patient's local conversation memory and is used to avoid anger-causing or repetitive replies; it is not autonomous model retraining.
+- AI output is supportive and non-diagnostic. It must never replace a qualified clinician, prescription, or emergency service.
+
+### Thermal and camera privacy state machine
+
+The normal privacy path is a tested three-state guard:
+
+| State | Thermal source | Normal camera | Recording | Exit condition |
+|---|---|---|---|---|
+| `thermal-only` | Active when permitted | Off | Off | Thermal, voice, or text concern requests verification |
+| `cctv-verifying` | Active | Live view | Off | Confirmed concern starts recording; calm state returns to thermal-only |
+| `recording` | Active | Live view | Local only | Patient response plus a sustained calm period stops recording |
+
+A changed voice or worrying phrase is a **soft signal**: it may open a live view but can never confirm an incident by itself. A camera observation or a thermal anomaly sustained for the configured confirmation period is required before recording and alert effects begin.
+
+For hackathon testing, `sensorTestMode` is enabled in the default profile. It keeps the currently selected thermal and camera sources active together so both panels can be demonstrated. It does not bypass the browser's physical-camera permission prompt, upload frames, or automatically start incident recording. Turning test mode off returns to the event-triggered guard above. No real camera should be used without the informed consent of everyone visible.
+
+### Two-phone gateway protections
+
+The phone gateway is deliberately local and short-lived:
+
+- Phone-facing requests are accepted only from loopback, private RFC 1918, link-local, or private IPv6 addresses.
+- Each patient pairing receives a random 128-bit token; token comparison uses constant-time equality.
+- The QR fragment supplies the token to the phone page, which sends it in a request header rather than placing it in ordinary server logs.
+- The CareBridge consumer API accepts only loopback requests from the same origin, blocking another device or website from controlling cameras.
+- Local HTTPS is used when the development certificate is available, and the UI shows a certificate fingerprint prefix for visual confirmation.
+- Thermal input is validated as a bounded numeric grid; normal-camera input must be JPEG.
+- Payload limits, minimum frame intervals, and failed-token rate limits reduce accidental or abusive traffic.
+- Capture permission is a renewable lease: thermal permission expires after roughly 30 seconds and camera permission after roughly 20 seconds if CareBridge stops renewing it.
+- Frames sent while a camera is not requested are refused. Turning a phone camera off deletes its last buffered frame immediately.
+- Only the newest thermal and camera frames are held in memory; the gateway writes no frame to disk and logs no frame content.
+- **New pairing** rotates the token and immediately invalidates the old QR links.
+
+The local phone gateway is available only when running the project on the PC. A static public site cannot directly reach devices on a private USB-tethering or Wi-Fi network.
+
+### Notifications and emergency privacy
+
+Notifications contain a `recipientIds` allowlist and are filtered for the signed-in demo user. Queue, report, medicine, and care actions calculate their intended recipients rather than broadcasting every event. Because the entire implementation is client-side, this remains a UX demonstration; production notification delivery must occur from an authorized server and avoid sensitive content on lock screens.
+
+India emergency `112` and Tele-MANAS `14416` are displayed for user-confirmed calls. Verify numbers, regulations, and hospital protocols before real deployment. The `*123*…#` relay and placeholder SMS destination are fictional demonstration values and are not connected to a hospital or government service.
+
+### Production security checklist
+
+Before using CareBridge with real people or records, replace or add all of the following:
+
+- standards-based identity such as OIDC/SAML, MFA for staff, secure password recovery, and short-lived sessions;
+- server-side RBAC plus relationship/consent checks on every request;
+- encrypted databases and object storage with managed key rotation;
+- append-only access, consent, export, and deletion audit trails;
+- field-level data minimization and separate hospital/tenant boundaries;
+- signed upload/download URLs, file-type validation, antivirus scanning, and report provenance;
+- CSRF protection, a strict Content Security Policy, secure cookies, dependency scanning, and rate limiting;
+- device enrollment and mutually authenticated transport for approved cameras;
+- secrets management and explicit egress controls for every AI provider;
+- clinical validation, accessibility testing, incident response, backups, disaster recovery, and applicable regional compliance review.
+
+### Demonstration and medical limitations
+
+- CareBridge is not a medical device and does not diagnose, prescribe, or change a dose.
+- Queue times and map directions are estimates; real facilities must provide verified maps and operations data.
+- Mood, voice, thermal, and vision classifications are non-diagnostic development signals and can be wrong.
+- The system must not be used as the only mechanism for monitoring a vulnerable person.
+- A real deployment requires clinical ownership, human escalation procedures, and independent security/privacy review.
 
 ## Deployment
 
 Current public demo:
 
-<https://carebridge-sairam-live.glossyharp64.chatgpt.site/>
+<https://carebridge-sairam.chummy-tune-1523.chatgpt.site/>
 
 Build the deployable output with:
 
