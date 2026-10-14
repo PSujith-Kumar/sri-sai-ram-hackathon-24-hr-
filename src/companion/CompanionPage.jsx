@@ -20,7 +20,7 @@ import { localDate } from '../careFlow'
 import { isActive } from '../medminder'
 import { LLM_DEFAULTS, askGemma, buildSensingHint, buildSystemPrompt, checkGemma, warmGemma } from './llm'
 import { CLASSIFIER_DEFAULTS, checkClassifier, classifyRemote } from './remoteModel'
-import { EMPTY_COMPANION, mergeProfile } from './config'
+import { EMPTY_COMPANION, mergeProfile, thermalSensorsEnabled } from './config'
 import { appendConversationMemory, avoidRepeatedResponse, conversationSignals, pruneConversationMemory } from './memory'
 import { recoveryReply } from './trainingData'
 
@@ -98,10 +98,9 @@ function CompanionInner({ data, setData, user, patient, notify }) {
   const removeContact = useCallback((id) => update(c => { const p = mergeProfile(c.profile); return { ...c, profile: { ...p, contacts: p.contacts.filter(k => k.id !== id) } } }), [update])
 
   const voice = useVoice({ profile, patientId: patient.id, onProblem: (code, lang) => live.current.onMicProblem?.(code, lang) })
-  // The thermal phone may keep watching while AI care mode is on (it only sees heat shapes). Otherwise sensors start
-  // after an unanswered check-in or a change in the patient's voice or words.
-  const thermalAlwaysOn = profile.thermal.kind === 'phone' && profile.thermal.alwaysOn
-  const sensorsOn = profile.autonomous && profile.sensorEscalationConsent && (safetySensorsActive || thermalAlwaysOn)
+  // The zero-hardware simulator starts with AI care mode so its controls work on the hosted demo.
+  // A real phone remains governed by its explicit always-on choice; other sources start after escalation.
+  const sensorsOn = thermalSensorsEnabled(profile, safetySensorsActive)
   const wakeReason = guard.mode !== GUARD_MODE.thermal ? guard.reasons.map(r => THERMAL_WORDS[r] || r).join(' and ') : testingCamera ? 'a test from CareBridge' : ''
   const cctv = useCamera({
     source: { kind: profile.thermal.cctvKind, url: profile.thermal.cctvUrl }, enabled: cctvOn, forceUnavailable: false, patientId: patient.id, reason: wakeReason,

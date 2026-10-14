@@ -5,6 +5,7 @@ import { frameDifference, initialMotionState, stepMotion } from '../src/companio
 import { analyzeThermalFrame, initialThermalState, simulateFrame, stepThermal } from '../src/companion/thermal'
 import { GUARD_MODE, cctvAllowed, initialGuard, recordingAllowed, stepGuard } from '../src/companion/privacy'
 import { buildBriefing } from '../src/companion/ussd'
+import { thermalSensorsEnabled, thermalStartsWithAi } from '../src/companion/config'
 
 const fixedRng = () => 0.5
 
@@ -196,6 +197,22 @@ describe('thermal camera with realistic sensor noise', () => {
 
   it('still detects fever through noise', () => {
     expect(run('fever', 8)).toContain('fever')
+  })
+})
+
+describe('thermal sensor startup policy', () => {
+  it('starts the hosted simulator with AI care mode', () => {
+    expect(thermalStartsWithAi({ thermal: { kind: 'sim' } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: true, thermal: { kind: 'sim' } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: false, sensorEscalationConsent: true, thermal: { kind: 'sim' } })).toBe(false)
+    expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: false, thermal: { kind: 'sim' } })).toBe(false)
+  })
+
+  it('keeps real sources behind their explicit activation policy', () => {
+    expect(thermalStartsWithAi({ thermal: { kind: 'http', alwaysOn: true } })).toBe(false)
+    expect(thermalStartsWithAi({ thermal: { kind: 'phone', alwaysOn: false } })).toBe(false)
+    expect(thermalStartsWithAi({ thermal: { kind: 'phone', alwaysOn: true } })).toBe(true)
+    expect(thermalSensorsEnabled({ autonomous: true, sensorEscalationConsent: true, thermal: { kind: 'http' } }, true)).toBe(true)
   })
 })
 

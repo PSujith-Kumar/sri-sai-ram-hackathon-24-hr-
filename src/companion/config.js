@@ -48,3 +48,17 @@ export const mergeProfile = (profile = {}) => ({
   classifier: { ...DEFAULT_PROFILE.classifier, ...profile.classifier },
   contacts: profile.contacts || [],
 })
+
+// The browser simulator is a visible, zero-hardware demo and should begin as soon as
+// AI care mode and sensor consent are both on. A real phone remains opt-in through its
+// separate always-on control, while HTTP gateways still start only after escalation.
+export const thermalStartsWithAi = (profile = {}) => {
+  const thermal = profile.thermal || {}
+  return thermal.kind === 'sim' || (thermal.kind === 'phone' && thermal.alwaysOn === true)
+}
+
+export const thermalSensorsEnabled = (profile = {}, safetySensorsActive = false) => Boolean(
+  profile.autonomous
+  && profile.sensorEscalationConsent
+  && (safetySensorsActive || thermalStartsWithAi(profile))
+)
